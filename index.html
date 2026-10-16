@@ -2047,12 +2047,30 @@ function renderSetV(){ renderSet(); renderOB(); $('#ex-config').style.display=(!
 $('#ex-json').addEventListener('click',()=>{ S.settings.lastBackup=new Date().toISOString(); save(); });
 $('#ex-config').onclick=()=>{ const d={app:'hanmaum-config',version:1,exported:new Date().toISOString(),config:CFG,accounts:D.accounts,history:D.history,opening:D.opening}; download(`교회자료_${stamp()}.json`, new Blob([JSON.stringify(d)],{type:'application/json'})); toastU('교회 자료 파일을 저장했어요. 이 파일은 교회 밖으로 공유하지 마세요'); };
 /* 공개(웹) 버전: 교회 자료 파일이 있어야 시작 */
-function showSetup(){ $('#setup-in').innerHTML=`<div class="art">⛪</div><h3>교회 자료 파일이 필요해요</h3><p>이 웹 주소에는 교회 장부 자료가 들어 있지 않아요. 재정부에서 받은 <b>교회 자료 파일</b>(.json)을 한 번만 불러오면 이 휴대폰에서 바로 쓸 수 있어요.</p>
-  <label class="btn big block" for="cfg-file" style="margin-top:14px">📂 교회 자료 파일 불러오기</label><input type="file" id="cfg-file" accept=".json,application/json" hidden>
-  <button class="btn ghost big block" id="cfg-demo" style="margin-top:10px">예시로 둘러보기</button><p class="hint" style="margin-top:12px">불러온 자료와 입력한 기록은 이 휴대폰에만 저장되고 인터넷으로 보내지지 않아요.</p>`;
+function applyConfig(d){ if(!d||d.app!=='hanmaum-config'||!Array.isArray(d.accounts)) throw new Error('교회 자료가 아니에요');
+  LS.setItem(CKEY, JSON.stringify({config:d.config||{},accounts:d.accounts,history:d.history||{},opening:d.opening||{}}));
+  if(d.seed && Array.isArray(d.seed.entries)){ let cur=null; try{ cur=JSON.parse(LS.getItem(SKEY)); }catch(e){} if(!cur||!Array.isArray(cur.entries)||!cur.entries.length) LS.setItem(SKEY, JSON.stringify({entries:d.seed.entries, members:d.seed.members||[], settings:d.seed.settings||{}, counts:d.seed.counts||{}, version:2})); } }
+const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function decryptBundle(pass){ const r=await fetch('data.enc',{cache:'no-cache'}).catch(()=>caches.match('data.enc')); if(!r||!r.ok) throw new Error('net'); const e=await r.json();
+  const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass.normalize('NFKC').trim()),'PBKDF2',false,['deriveKey']);
+  const key=await crypto.subtle.deriveKey({name:'PBKDF2',hash:'SHA-256',salt:unb64(e.salt),iterations:e.iter},km,{name:'AES-GCM',length:256},false,['decrypt']);
+  let pt; try{ pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(e.iv)},key,unb64(e.ct)); }catch(x){ throw new Error('pass'); }
+  return JSON.parse(new TextDecoder().decode(pt)); }
+function showSetup(){ $('#setup-in').innerHTML=`<div class="art">⛪</div><h3>교회 자료 불러오기</h3><p>재정부에서 받은 <b>교회 자료 비밀번호</b>를 넣으면 이 휴대폰에서 바로 쓸 수 있어요. (처음 한 번만)</p>
+  <label for="cfg-pass" style="display:block;font-weight:800;font-size:18px;margin:16px 0 6px">🔑 교회 자료 비밀번호</label>
+  <input id="cfg-pass" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="비밀번호 입력" style="width:100%;box-sizing:border-box;font-size:22px;padding:14px 16px;border-radius:14px;border:2px solid #e6d3c4;letter-spacing:1px">
+  <button class="btn big block" id="cfg-load" style="margin-top:12px">불러오기</button>
+  <div id="cfg-msg" style="min-height:24px;margin-top:10px;font-weight:700;color:#b44a22"></div>
+  <button class="btn ghost big block" id="cfg-demo" style="margin-top:6px">예시로 둘러보기</button>
+  <p class="hint" style="margin-top:12px">불러온 자료와 입력한 기록은 이 휴대폰에만 저장되고 인터넷으로 보내지지 않아요.</p>
+  <p style="text-align:center;margin-top:8px"><label for="cfg-file" style="font-size:14px;color:#7a6a5f;text-decoration:underline">또는 교회 자료 파일(.json)로 불러오기</label><input type="file" id="cfg-file" accept=".json,application/json" hidden></p>`;
   $('#setup').classList.add('on');
   $('#cfg-demo').onclick=()=>{ location.href=location.pathname+'?demo'; };
-  $('#cfg-file').onchange=async ev=>{ const f=ev.target.files[0]; if(!f) return; try{ const d=JSON.parse(await f.text()); if(d.app!=='hanmaum-config'||!Array.isArray(d.accounts)) throw new Error('교회 자료 파일이 아니에요'); LS.setItem(CKEY, JSON.stringify({config:d.config||{},accounts:d.accounts,history:d.history||{},opening:d.opening||{}})); if(d.seed && Array.isArray(d.seed.entries)){ let cur=null; try{ cur=JSON.parse(LS.getItem(SKEY)); }catch(e){} if(!cur||!Array.isArray(cur.entries)||!cur.entries.length) LS.setItem(SKEY, JSON.stringify({entries:d.seed.entries, members:d.seed.members||[], settings:d.seed.settings||{}, counts:d.seed.counts||{}, version:2})); } location.reload(); }catch(e){ alert('불러오기 실패: '+e.message); } }; }
+  const go=async()=>{ const p=$('#cfg-pass').value; const m=$('#cfg-msg'); if(!p.trim()){ m.textContent='비밀번호를 넣어 주세요'; return; } m.style.color='#5f4333'; m.textContent='여는 중… (몇 초 걸려요)'; $('#cfg-load').disabled=true;
+    try{ applyConfig(await decryptBundle(p)); m.textContent='✅ 불러왔어요!'; setTimeout(()=>location.reload(),300); }
+    catch(e){ m.style.color='#b44a22'; m.textContent=e.message==='pass'?'비밀번호가 맞지 않아요. 다시 확인해 주세요 🙏':e.message==='net'?'인터넷에 연결된 상태에서 다시 해 주세요':'불러오기 실패: '+e.message; $('#cfg-load').disabled=false; } };
+  $('#cfg-load').onclick=go; $('#cfg-pass').onkeydown=e=>{ if(e.key==='Enter') go(); };
+  $('#cfg-file').onchange=async ev=>{ const f=ev.target.files[0]; if(!f) return; try{ applyConfig(JSON.parse(await f.text())); location.reload(); }catch(e){ alert('불러오기 실패: '+e.message); } }; }
 
 /* ---------- 예시 데이터 (?demo) : 가상 이름만 ---------- */
 if(DEMO){ $('#demoFlag').innerHTML='<span class="demo-flag">예시 데이터 · 가상 이름</span>';
