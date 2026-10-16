@@ -1020,6 +1020,7 @@ if(PUB && !DEMO){ try{ const c=JSON.parse(LS.getItem(CKEY)||'null'); if(c && Arr
 const CFG = D.config || {};
 // 업데이트 이전에 자료를 불러온 사용자: 담임목사 정보가 없으면 본인 자료(서식 이름 '○○○목사')에서 채움 — 기록은 건드리지 않음
 if(PUB && D.configured && !CFG.pastor){ try{ const m=/^\s*(\S{2,4}?)\s*목사\s*$/.exec((CFG.formLabels||{}).resv1||''); if(m){ CFG.pastor={title:'담임목사',name:m[1]}; const c=JSON.parse(LS.getItem(CKEY)); c.config=Object.assign({},c.config||{},{pastor:CFG.pastor}); LS.setItem(CKEY,JSON.stringify(c)); } }catch(e){} }
+const PNAME = () => (CFG.pastor&&CFG.pastor.name)||'';
 const PST = () => (CFG.pastor&&CFG.pastor.name) ? `${CFG.pastor.title||'담임목사'} ${CFG.pastor.name}` : '';
 const CHP = () => CH()+(PST()?' · '+PST():'');
 const CH = () => CFG.church || '우리 교회';
@@ -1149,7 +1150,7 @@ function giftsOfWeek(wk){
 
 /* ---------- PRINT ---------- */
 function aud(){ return (S.settings.auditor||'').trim(); }
-function stdSign(){ const L=[['회계',S.settings.acct],['재무',S.settings.fin],['재정부장',S.settings.head],['담임목사','']]; if(aud()) L.push(['감사',aud()]); return L; }
+function stdSign(){ const L=[['회계',S.settings.acct],['재무',S.settings.fin],['재정부장',S.settings.head]]; if(aud()) L.push(['감사',aud()]); L.push(['담임목사',PNAME()]); return L; }   // 담임목사 = 최종 결재(맨 오른쪽)
 function signBlock(labels){ return `<div class="sign">${labels.map(([t,n])=>`<div><b>${h(t)}</b><span></span><small>${h(n||'')}</small></div>`).join('')}</div>`; }
 function printWeekly(m,w){
   const su=sundays(m)[w-1]; const v=weekVals(m);
@@ -1200,8 +1201,8 @@ function fnum(x){ x=r2(+x||0); if(!x) return ''; const neg=x<0; const a=Math.abs
 function fnum0(x){ x=r2(+x||0); return x? fnum(x) : '0'; }
 function formHead(title,m,w){ const su=sundays(m)[w-1]; return `<div class="fhead"><h1 class="ftitle">${title}</h1></div>
   <div class="fmeta"><b>${h(CH())}</b><span>20<u>${String(su.getFullYear()).slice(2)}</u> 년 <u>${su.getMonth()+1}</u> 월 <u>${su.getDate()}</u> 일, <u>${w}</u> 주일</span></div>`; }
-function formSign(cols){ const st=S.settings, nm={'회 계':st.acct,'재 무':st.fin,'재정부장':st.head,'담임목사':'','회계-재무':[st.acct,st.fin].filter(Boolean).join(' / ')};
-  if(aud()) cols=cols.concat(['감 사']); nm['감 사']=aud();
+function formSign(cols){ const st=S.settings, nm={'회 계':st.acct,'재 무':st.fin,'재정부장':st.head,'담임목사':PNAME(),'회계-재무':[st.acct,st.fin].filter(Boolean).join(' / ')};
+  if(aud()){ const i=cols.indexOf('담임목사'); cols=i<0?cols.concat(['감 사']):cols.slice(0,i).concat(['감 사'],cols.slice(i)); } nm['감 사']=aud();
   return `<table class="fsign"><tr><th>직 위</th>${cols.map(c=>`<th>${c}</th>`).join('')}</tr><tr><th>서 명</th>${cols.map(c=>`<td><small class="fsn">${h(nm[c]||'')}</small></td>`).join('')}</tr></table>`; }
 function weekCalc(m,w){
   const v=weekVals(m), g=k=>(v[k]||[])[w-1]||0;
@@ -1519,7 +1520,7 @@ function statementHTML(pid, pk){
    <p class="conf">위 금액을 본 교회에 헌금하였음을 확인합니다.</p>
    <p class="date">${today.getFullYear()}년 ${today.getMonth()+1}월 ${today.getDate()}일</p>
    <div class="church">${h(CHS())}</div>
-   ${signBlock([['재무',(S.settings.fin||'')+' (인)'],['담임목사','(인)']])}
+   ${signBlock([['재무',(S.settings.fin||'')+' (인)'],['담임목사',(PNAME()?PNAME()+' ':'')+'(인)']])}
    <p class="small" style="margin-top:6mm">※ 이 내역서는 헌금계수 앱에 이름으로 기록된 헌금만 집계한 것입니다${fn?` (교인별 기록 시작: ${kdateStr(fn)})`:''}. 그 이전 기간은 개인별 자료가 없어 포함되지 않습니다.</p></div>`;
 }
 function printStatements(pids, pk){ $('#print-stmt').innerHTML=pids.map(pid=>statementHTML(pid,pk||'fy')).join(''); doPrint('p-stmt'); }
