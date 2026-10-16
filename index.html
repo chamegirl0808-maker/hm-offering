@@ -743,6 +743,7 @@ body.rshot .rp{border-radius:0;max-width:none}
 @media print{ #print-pretty .rp>.rp-int{column-span:all;margin-bottom:8px;padding:7px 12px} }
 @media print{ #print-pretty .rp-bl{font-size:13px;line-height:1.3} #print-pretty .rp-pc{font-size:11px} #print-pretty .rp-bars{gap:2px} #print-pretty .rp-card h2{margin-bottom:5px} }
 #onb-skip,#onb-next{white-space:nowrap}
+.rp-xl{color:#2b7a55;font-weight:800;white-space:nowrap}
 
 /* ---------- 📷 스캔 (헌금입금 · 지출 영수증) ---------- */
 .bigact.scan{grid-column:1/-1;min-height:84px;flex-direction:row;align-items:center;justify-content:flex-start;gap:14px;background:linear-gradient(135deg,#3f6e8c,#2c5470)}
@@ -1032,6 +1033,10 @@ const ACC = D.accounts, BYK = Object.fromEntries(ACC.map(a=>[a.key,a]));
 const FY = {12:2025,1:2026,2:2026,3:2026,4:2026,5:2026,6:2026,7:2026,8:2026,9:2026,10:2026,11:2026};
 const MONTHS = [12,1,2,3,4,5,6,7,8,9,10,11];
 const OPEN_MONTHS = [10,11];              // 입력 가능한 달
+// 지난 달(2025년 12월~2026년 9월) 엑셀 기록 — 읽기 전용 (작업본 계산값에서 추출 · 이름 없음)
+const HW = D.histWeeks||{}, HB = D.histBank||{};
+const isHist = m => !OPEN_MONTHS.includes(+m) && !!HW[String(m)];
+const histDist = m => +((HB[String(m)]||{}).dist||0);
 const WEEKN = ['첫주','둘째주','세째주','네째주','다섯째주'];
 const INC_SECS = ['일반헌금','선교목적헌금','건축헌금','적립금입금'];
 const GEN_SECS = ['목회활동비','예배행정비','예비비','교육훈련비','후생복지비','고정비'];
@@ -1052,9 +1057,12 @@ function peso(x, sign){ x=r2(x||0); const s=Math.abs(x).toLocaleString('en-US',{
 function pz(x){ return Math.abs(x||0)<0.005 ? '<span class="z">–</span>' : peso(x); }
 function iso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function parseISO(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
-function sundays(m){ const y=FY[m]; const out=[]; const d=new Date(y,m-1,1); while(d.getMonth()===m-1){ if(d.getDay()===0) out.push(new Date(d)); d.setDate(d.getDate()+1);} return out; }
+function sundays(m){ const y=FY[m]; const out=[]; const d=new Date(y,m-1,1); while(d.getMonth()===m-1){ if(d.getDay()===0) out.push(new Date(d)); d.setDate(d.getDate()+1);}
+  if(isHist(m) && out.length<5 && (HB[String(m)]||{}).w5){ const x=new Date(y,m,0); x._x=true; out.push(x); }   // 엑셀 '다섯째주' 칸에 기록이 있는 달 (예: 12월 송구영신)
+  return out; }
+function md(d){ return d._x? '5주' : `${d.getMonth()+1}/${d.getDate()}`; }
 function weekOf(s){ const d=parseISO(s), m=d.getMonth()+1; if(FY[m]!==d.getFullYear()) return null; const su=sundays(m); for(let i=0;i<su.length;i++){ if(d<=su[i]) return {m, w:i+1, sun:su[i]}; } return {m, w:su.length, sun:su[su.length-1]}; }
-function kdate(d){ return (d.getMonth()+1)+'월 '+d.getDate()+'일'; }
+function kdate(d){ return d._x? (d.getMonth()+1)+'월 다섯째주' : (d.getMonth()+1)+'월 '+d.getDate()+'일'; }
 function uid(){ return (crypto.randomUUID? crypto.randomUUID(): (Date.now().toString(36)+Math.random().toString(36).slice(2))).replace(/-/g,'').slice(0,12); }
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('on'),1900); }
 function parseAmounts(str){ const out=[]; for(let p of String(str).split(/[\s,;+\/]+/)){ if(!p) continue; p=p.replace(/[₱pP]/g,''); let m=p.match(/^([\d.]+)[x×*](\d+)$/); if(m){ for(let i=0;i<+m[2];i++) out.push(+m[1]); continue;} const v=Number(p); if(!isFinite(v)||v<=0) return null; out.push(v);} return out; }
@@ -1105,11 +1113,13 @@ function addMember(name,extra){ const m=Object.assign({id:'m'+uid().slice(0,10),
 /* ---------- aggregation ---------- */
 function weekVals(m){ // {key:[5]}
   const v={}; ACC.forEach(a=>v[a.key]=[0,0,0,0,0]);
+  if(isHist(m)){ const hw=HW[String(m)]; for(const k in hw) if(v[k]) for(let i=0;i<5;i++) v[k][i]+=+hw[k][i]||0; return v; }
   S.entries.forEach(e=>{ if(+e.month===m && v[e.key]) v[e.key][+e.week-1]+=+e.amount; });
   return v;
 }
 function monthTotals(m){ // {key: total}
   const t={}; ACC.forEach(a=>t[a.key]=0);
+  if(isHist(m)){ const hw=HW[String(m)]; for(const k in hw) if(k in t) t[k]+=hw[k].reduce((s,x)=>s+(+x||0),0); return t; }
   const hist=(D.history||{})[String(m)]||{}; for(const k in hist) if(k in t) t[k]+=hist[k];
   S.entries.forEach(e=>{ if(+e.month===m && e.key in t) t[e.key]+=+e.amount; });
   return t;
@@ -1124,7 +1134,9 @@ function totalsFrom(obj,f){ // obj key->number (or arrays with f)
 }
 function openingDefault(){ const o=D.opening||{}; return o.bank_total_start_10!=null? +o.bank_total_start_10 : (+o.bank_total_end_9||0); }
 function openingStart(){ const v=(S.settings||{}).openingBalance; return (v!==undefined && v!==null && v!=='' && isFinite(+v))? +v : openingDefault(); }
-function bankBalance(m,w){ // 9월 말 통장잔액에서 시작
+function fyOpening(){ const o=(D.opening||{}).acct_start_fy||{}; return r2((+o.resv||0)+(+o.bld||0)+(+o.mis||0)+(+o.gen||0)); }
+function bankBalance(m,w){ // 9월 말 통장잔액에서 시작 (지난 달은 회계연도 전기이월 + 엑셀 기록)
+  if(isHist(m)){ let b=fyOpening(); for(const mm of MONTHS){ if(!isHist(mm)) break; const v=weekVals(mm), n=sundays(mm).length; for(let i=0;i<5;i++){ if(mm===m && i>=w) return r2(b); const t=totalsFrom(v,a=>a[i]); b+=t.inc-t.exp; } if(mm===m) return r2(b); } return r2(b); }
   let bal=openingStart();
   for(const mm of [10,11]){ const v=weekVals(mm); for(let i=0;i<5;i++){ if(mm===m && i>=w) return bal; const t=totalsFrom(v,a=>a[i]); bal+=t.inc-t.exp; } if(mm===m) return bal; }
   return bal;
@@ -1210,7 +1222,7 @@ function weekCalc(m,w){
   const sec=s=>ACC.filter(a=>a.section===s).reduce((t,a)=>t+g(a.key),0);
   const mis=sec('선교비')+ACC.filter(a=>isMirror(a.key)).reduce((t,a)=>t+g(a.key),0);
   // 엑셀 10주계산과 같이 '다섯째주' 칸에서만 월말 선교분배금(지출분배금×3%)을 일반재정 → 선교로 옮김 (총액 변화 없음)
-  let dist3=0; if(w===5){ dist3=r2(totalsFrom(monthTotals(m)).dist*0.03); }
+  let dist3=0; if(w===5){ dist3=isHist(m)? histDist(m) : r2(totalsFrom(monthTotals(m)).dist*0.03); }   // 지난 달: 엑셀에 기록된 선교분배금 그대로
   const dep={resv:sec('적립금입금')-sec('적립금지출'), bld:sec('건축헌금')-sec('건축지출'), mis:sec('선교목적헌금')-mis+dist3, gen:sec('일반헌금')-T.gen-dist3};
   dep.total=dep.resv+dep.bld+dep.mis+dep.gen;
   return {v,g,T,dep,prev:bankBalance(m,w-1),cur:bankBalance(m,w),dist3};
@@ -1628,7 +1640,7 @@ function toastU(msg, undo){ const t=$('#toast'); t.innerHTML=`<span>${h(msg)}</s
 const won = x => peso(x);
 function wkKey(wk){ return wk.m+'-'+wk.w; }
 function wkLabel(wk){ return `${wk.m}월 ${WEEKN[wk.w-1].replace('첫주','첫째 주').replace('둘째주','둘째 주').replace('세째주','셋째 주').replace('네째주','넷째 주').replace('다섯째주','다섯째 주')}`; }
-function dLabel(d){ return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`; }
+function dLabel(d){ return d._x? `${d.getFullYear()}년 ${d.getMonth()+1}월 다섯째주` : `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`; }
 function weekT(wk){ return totalsFrom(weekVals(wk.m),x=>x[wk.w-1]); }
 function curWeek(){ const wk=weekOf(defaultSunday()); if(wk && OPEN_MONTHS.includes(wk.m)) return wk;
   const t=new Date(); const last=OPEN_MONTHS[OPEN_MONTHS.length-1], first=OPEN_MONTHS[0];
@@ -1958,27 +1970,30 @@ function incGroups(obj){ const G=[['💵 주정헌금',k=>k==='일반헌금|주�
   const out=G.map(g=>[g[0],0]); ACC.filter(a=>a.kind==='income').forEach(a=>{ const i=G.findIndex(g=>g[1](a.key)); out[i][1]+=obj[a.key]||0; }); return out.filter(r=>r[1]); }
 function expGroups(obj){ const out=CATS.map(c=>[`${c.i} ${c.l}`,c.keys.reduce((s,k)=>s+(obj[k]||0),0)]); out.push(['🎯 목적헌금 → 선교 자동 지출',mirrorOf(obj)]); return out.filter(r=>r[1]).sort((a,b)=>b[1]-a[1]); }
 function renderReport(){ if(!RV.m){ const wk=curWeek(); RV.m=wk.m; RV.w=wk.w; }
-  const m=RV.m, live=OPEN_MONTHS.includes(m); if(!live) RV.mode='month'; const su=sundays(m); if(RV.w>su.length) RV.w=su.length; const w=RV.w;
+  const m=RV.m, live=OPEN_MONTHS.includes(m), hist=isHist(m), hasW=live||hist; if(!hasW) RV.mode='month'; const su=sundays(m); if(RV.w>su.length) RV.w=su.length; const w=RV.w;
   const week=RV.mode==='week'; const v=weekVals(m), mt=monthTotals(m), yt=ytd(m);
   const obj= week? Object.fromEntries(ACC.map(a=>[a.key,v[a.key][w-1]])) : mt;
   const T= week? totalsFrom(v,x=>x[w-1]) : totalsFrom(mt); const TY=totalsFrom(yt);
   const wk={m,w,sun:su[w-1]}; const c=S.counts[wkKey(wk)];
-  const kpis= week? `<div class="sc inc"><div class="l">💵 헌금</div><div class="v num">${won(T.inc)}</div><div class="s">${peopleOfWeek(wk)}명 · ${incomeOfWeek(wk).length}건</div></div><div class="sc exp"><div class="l">🧾 지출</div><div class="v num">${won(T.exp)}</div><div class="s">주간 잔액 ${won(T.inc-T.exp)}</div></div><div class="sc ${T.inc-T.exp<0?'exp':'bal'}"><div class="l">📈 금주 잔액</div><div class="v num">${(T.inc-T.exp>0?'+':'')+won(T.inc-T.exp)}</div><div class="s">전주이월 ${won(bankBalance(m,w-1))}</div></div>`
-   : `<div class="sc inc"><div class="l">💵 ${m}월 헌금</div><div class="v num">${won(T.inc)}</div><div class="s">12월부터 ${won(TY.inc)}</div></div><div class="sc exp"><div class="l">🧾 ${m}월 지출</div><div class="v num">${won(T.exp)}</div><div class="s">12월부터 ${won(TY.exp)}</div></div><div class="sc bal"><div class="l">📌 ${m}월 남은 돈</div><div class="v num">${won(T.inc-T.exp)}</div><div class="s">${live?'통장 잔액 '+won(bankBalance(m,su.length)):'엑셀 마감월'}</div></div>`;
+  const kpis= week? `<div class="sc inc"><div class="l">💵 헌금</div><div class="v num">${won(T.inc)}</div><div class="s">${hist?'📗 엑셀 기록':peopleOfWeek(wk)+'명 · '+incomeOfWeek(wk).length+'건'}</div></div><div class="sc exp"><div class="l">🧾 지출</div><div class="v num">${won(T.exp)}</div><div class="s">주간 잔액 ${won(T.inc-T.exp)}</div></div><div class="sc ${T.inc-T.exp<0?'exp':'bal'}"><div class="l">📈 금주 잔액</div><div class="v num">${(T.inc-T.exp>0?'+':'')+won(T.inc-T.exp)}</div><div class="s">전주이월 ${won(bankBalance(m,w-1))}</div></div>`
+   : `<div class="sc inc"><div class="l">💵 ${m}월 헌금</div><div class="v num">${won(T.inc)}</div><div class="s">12월부터 ${won(TY.inc)}</div></div><div class="sc exp"><div class="l">🧾 ${m}월 지출</div><div class="v num">${won(T.exp)}</div><div class="s">12월부터 ${won(TY.exp)}</div></div><div class="sc bal"><div class="l">📌 ${m}월 남은 돈</div><div class="v num">${won(T.inc-T.exp)}</div><div class="s">${hasW?'통장 잔액 '+won(bankBalance(m,su.length)):'엑셀 마감월'}</div></div>`;
   let chart;
-  if(week){ const A=su.map((_,i)=>totalsFrom(v,x=>x[i]).inc), B=su.map((_,i)=>totalsFrom(v,x=>x[i]).exp); chart=`<h3>${m}월 주별 헌금 · 지출</h3>`+barChart(su.map(d=>`${d.getMonth()+1}/${d.getDate()}`),A,B,w-1,`${m}월 주별 헌금과 지출`); }
+  if(week){ const A=su.map((_,i)=>totalsFrom(v,x=>x[i]).inc), B=su.map((_,i)=>totalsFrom(v,x=>x[i]).exp); chart=`<h3>${m}월 주별 헌금 · 지출</h3>`+barChart(su.map(md),A,B,w-1,`${m}월 주별 헌금과 지출`); }
   else { const A=MONTHS.map(x=>totalsFrom(monthTotals(x)).inc), B=MONTHS.map(x=>totalsFrom(monthTotals(x)).exp); chart=`<h3>월별 헌금 · 지출 (2025년 12월~)</h3>`+barChart(MONTHS.map(x=>x+'월'),A,B,MONTHS.indexOf(m),'월별 헌금과 지출'); }
   const accRows=ACC.filter(a=>(week?obj[a.key]:0)||mt[a.key]||yt[a.key]).map(a=>`<tr><td>${h(a.kind==='income'?tLabel(a.key):xLabel(a.key))}<br><span class="muted" style="font-size:13px">${h(a.name)}</span></td>${week?`<td>${pz(obj[a.key])}</td>`:''}<td>${pz(mt[a.key])}</td><td>${pz(yt[a.key])}</td></tr>`).join('');
   $('#v-report').innerHTML=`<h2 class="title">보고서</h2>
-   <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><div class="segb"><button data-rm="week" class="${week?'on':''}" ${live?'':'disabled'}>주간</button><button data-rm="month" class="${!week?'on':''}">월간</button></div></div>
-   <div class="scroller" id="r-months">${MONTHS.map(x=>`<button data-m="${x}" class="${x===m?'on':''}">${x}월<small>${OPEN_MONTHS.includes(x)?FY[x]:'마감'}</small></button>`).join('')}</div>
+   <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><div class="segb"><button data-rm="week" class="${week?'on':''}" ${hasW?'':'disabled'}>주간</button><button data-rm="month" class="${!week?'on':''}">월간</button></div></div>
+   <div class="scroller" id="r-months">${MONTHS.map(x=>`<button data-m="${x}" class="${x===m?'on':''}">${x}월<small>${OPEN_MONTHS.includes(x)?FY[x]:isHist(x)?'엑셀':'마감'}</small></button>`).join('')}</div>
    ${week?`<div class="scroller" id="r-weeks">${su.map((d,i)=>`<button data-w="${i+1}" class="${i+1===w?'on':''}">${kdate(d)}<small>${WEEKN[i]}${S.counts[m+'-'+(i+1)]&&S.counts[m+'-'+(i+1)].done?' ✓':''}</small></button>`).join('')}</div>`:''}
    <div class="statcards">${kpis}</div>
-   ${week? weekBalCard(m,w,'card') : (live? monthBalCard(m,lastWeekOf(m)||1,'card') : '')}
+   ${hist?`<div class="info" style="margin:0 0 12px">📗 ${FY[m]}년 ${m}월은 <b>엑셀 기록</b>(마감된 장부)이에요. 보기만 할 수 있고 고칠 수 없어요. 교인별 헌금은 없어요.</div>`:(!hasW&&PUB&&m!==10&&m!==11?histOfferHTML():'')}
+   ${week? weekBalCard(m,w,'card') : (hasW? monthBalCard(m,lastWeekOf(m)||1,'card') : '')}
    ${week&&c&&c.cash!=null?`<div class="status ${Math.abs(c.cash-T.inc)<0.005?'ok':'warn'}">${Math.abs(c.cash-T.inc)<0.005?'✅ 세어 본 현금과 기록이 맞아요':'⚠️ 세어 본 현금과 '+won(Math.abs(c.cash-T.inc))+' 차이가 있어요'}</div>`:''}
    <div class="card" style="margin-bottom:14px">${chart}</div>
    <div class="grid2v"><div class="card"><h3>헌금 종류별</h3>${hbars(incGroups(obj),'#2b7a55')}</div><div class="card"><h3>어디에 썼나요</h3>${hbars(expGroups(obj),'#c4572f')}</div></div>
    <div class="card" style="margin-top:14px"><h3>📑 보고서 보기 · 인쇄 · 공유</h3><div class="hint" style="margin:-6px 0 12px">눌러서 미리 보고, ‘인쇄 · PDF’를 누르면 저장할 수 있어요.</div><div class="prlist">
+    ${hist?`<button class="pr" data-rp="week"><span class="i">📊</span><span><b>주간 재정 보고</b><small>${kdate(su[w-1])} · 엑셀 기록 (이름 없음)</small></span></button>
+    <button class="pr" data-rp="spend"><span class="i">🧾</span><span><b>주간 지출 내역</b><small>${kdate(su[w-1])} · 계정별 (엑셀 기록)</small></span></button>`:''}
     ${live?`<button class="pr" data-rp="pastor"><span class="i">🙏</span><span><b>목사님 보고용 헌금 내역</b><small>${kdate(su[w-1])} 주일 · 헌금하신 분과 금액 · 카톡으로 보내기</small></span></button>
     <button class="pr" data-rp="week"><span class="i">📊</span><span><b>주간 재정 보고</b><small>${kdate(su[w-1])} 주일 · 목사님·교회 보고용 (이름 없음)</small></span></button>
     <button class="pr" data-rp="give"><span class="i">💵</span><span><b>주간 헌금 현황</b><small>헌금 종류별 · 헌금하신 분 (내부용)</small></span></button>
@@ -1995,6 +2010,7 @@ function renderReport(){ if(!RV.m){ const wk=curWeek(); RV.m=wk.m; RV.w=wk.w; }
    <details class="more card" style="margin-top:14px"><summary>📋 계정별 자세히 보기 (엑셀 계정 이름)</summary><div class="tbl-wrap"><table class="t num"><thead><tr><th>항목</th>${week?'<th>이번 주</th>':''}<th>${m}월</th><th>12월부터</th></tr></thead><tbody>${accRows}<tr class="gt"><td>헌금 합계</td>${week?`<td>${won(T.inc)}</td>`:''}<td>${won(totalsFrom(mt).inc)}</td><td>${won(TY.inc)}</td></tr><tr class="gt"><td>지출 합계 (목적헌금 자동지출 포함)</td>${week?`<td>${won(T.exp)}</td>`:''}<td>${won(totalsFrom(mt).exp)}</td><td>${won(TY.exp)}</td></tr></tbody></table></div><div class="hint">지출분배금 (일반헌금 − 고정비): ${m}월 ${won(totalsFrom(mt).dist)}</div></details>`;
   const el=$('#v-report');
   el.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ RV.mode=b.dataset.rm; renderReport(); });
+  if($('#hx-go')) bindHistOffer();
   el.querySelectorAll('#r-months [data-m]').forEach(b=>b.onclick=()=>{ RV.m=+b.dataset.m; RV.w=1; renderReport(); });
   el.querySelectorAll('#r-weeks [data-w]').forEach(b=>b.onclick=()=>{ RV.w=+b.dataset.w; renderReport(); });
   if($('#pr-w')) $('#pr-w').onclick=()=>printWeekly(m,w); $('#pr-m').onclick=()=>printMonthly(m);
@@ -2050,11 +2066,21 @@ $('#ob-reset').onclick=()=>{ const old=S.settings.openingBalance; S.settings.ope
 function renderSetV(){ renderSet(); renderOB(); $('#ex-config').style.display=(!PUB||D.configured)&&!DEMO?'':'none';
   $('#set-note').innerHTML=`• 9월까지는 원본 엑셀에 마감된 금액이 들어 있어 년누계에 자동 반영돼요. 이 앱에서는 2026년 10월·11월을 입력해요.<br>• 목적헌금(학생부·한글교실·오병이어·지정헌금·강대상장식·기타)은 엑셀과 같이 같은 금액이 선교 지출로 자동 처리돼요.${S.settings.lastBackup?`<br>• 마지막 백업: ${h(S.settings.lastBackup.slice(0,10))}`:''}`; }
 $('#ex-json').addEventListener('click',()=>{ S.settings.lastBackup=new Date().toISOString(); save(); });
-$('#ex-config').onclick=()=>{ const d={app:'hanmaum-config',version:1,exported:new Date().toISOString(),config:CFG,accounts:D.accounts,history:D.history,opening:D.opening}; download(`교회자료_${stamp()}.json`, new Blob([JSON.stringify(d)],{type:'application/json'})); toastU('교회 자료 파일을 저장했어요. 이 파일은 교회 밖으로 공유하지 마세요'); };
+$('#ex-config').onclick=()=>{ const d={app:'hanmaum-config',version:1,exported:new Date().toISOString(),config:CFG,accounts:D.accounts,history:D.history,opening:D.opening,histWeeks:D.histWeeks||{},histBank:D.histBank||{}}; download(`교회자료_${stamp()}.json`, new Blob([JSON.stringify(d)],{type:'application/json'})); toastU('교회 자료 파일을 저장했어요. 이 파일은 교회 밖으로 공유하지 마세요'); };
 /* 공개(웹) 버전: 교회 자료 파일이 있어야 시작 */
 function applyConfig(d){ if(!d||d.app!=='hanmaum-config'||!Array.isArray(d.accounts)) throw new Error('교회 자료가 아니에요');
-  LS.setItem(CKEY, JSON.stringify({config:d.config||{},accounts:d.accounts,history:d.history||{},opening:d.opening||{}}));
+  LS.setItem(CKEY, JSON.stringify({config:d.config||{},accounts:d.accounts,history:d.history||{},opening:d.opening||{},histWeeks:d.histWeeks||{},histBank:d.histBank||{}}));
   if(d.seed && Array.isArray(d.seed.entries)){ let cur=null; try{ cur=JSON.parse(LS.getItem(SKEY)); }catch(e){} if(!cur||!Array.isArray(cur.entries)||!cur.entries.length) LS.setItem(SKEY, JSON.stringify({entries:d.seed.entries, members:d.seed.members||[], settings:d.seed.settings||{}, counts:d.seed.counts||{}, version:2})); } }
+function histOfferHTML(){ return `<div class="card" style="margin:0 0 12px"><h3>📗 지난 달(12월~9월) 엑셀 기록 받기</h3><div class="hint" style="margin:-4px 0 10px">교회 자료 비밀번호를 한 번 넣으면 지난 달 주별·월별 보고서를 볼 수 있어요. 지금까지 입력한 10월·11월 기록은 그대로예요.</div>
+  <input id="hx-pass" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="교회 자료 비밀번호" style="width:100%;box-sizing:border-box;font-size:20px;padding:12px 14px;border-radius:12px;border:2px solid #e6d3c4"><button class="btn" id="hx-go" style="margin-top:10px;width:100%">지난 달 기록 받기</button><div id="hx-msg" class="hint" style="margin-top:8px"></div></div>`; }
+function mergeHist(d){ if(!d||!d.histWeeks) throw new Error('지난 달 기록이 없는 자료예요'); let c=null; try{ c=JSON.parse(LS.getItem(CKEY)); }catch(e){} if(!c||!Array.isArray(c.accounts)) throw new Error('교회 자료가 없어요');
+  c.histWeeks=d.histWeeks; c.histBank=d.histBank||{}; c.opening=Object.assign({},c.opening||{},{acct_start_fy:(d.opening||{}).acct_start_fy||(c.opening||{}).acct_start_fy});
+  const ks=new Set((c.accounts||[]).map(a=>a.key)); (d.accounts||[]).forEach(a=>{ if(!ks.has(a.key)) c.accounts.push(a); });
+  LS.setItem(CKEY, JSON.stringify(c)); }   // 기록(hanmaum-offering-v1)·설정은 건드리지 않음
+function bindHistOffer(){ const go=async()=>{ const p=$('#hx-pass').value, m=$('#hx-msg'); if(!p.trim()){ m.textContent='비밀번호를 넣어 주세요'; return; } m.textContent='여는 중… (몇 초 걸려요)'; $('#hx-go').disabled=true;
+  try{ mergeHist(await decryptBundle(p)); m.textContent='✅ 받았어요!'; setTimeout(()=>location.reload(),300); }
+  catch(e){ m.textContent=e.message==='pass'?'비밀번호가 맞지 않아요 🙏':e.message==='net'?'인터넷에 연결된 상태에서 다시 해 주세요':'실패: '+e.message; $('#hx-go').disabled=false; } };
+  $('#hx-go').onclick=go; $('#hx-pass').onkeydown=e=>{ if(e.key==='Enter') go(); }; }
 const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 async function decryptBundle(pass){ const r=await fetch('data.enc',{cache:'no-cache'}).catch(()=>caches.match('data.enc')); if(!r||!r.ok) throw new Error('net'); const e=await r.json();
   const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass.normalize('NFKC').trim()),'PBKDF2',false,['deriveKey']);
@@ -2103,7 +2129,7 @@ if(DEMO){ $('#demoFlag').innerHTML='<span class="demo-flag">예시 데이터 · 
 /* ===================== 예쁜 보고서 (주간 헌금 현황 · 지출 내역 · 주간/월간 재정 보고) ===================== */
 const RP_LABEL={pastor:'목사님 보고',give:'헌금 현황',spend:'지출 내역',week:'재정 보고',month:'월간 재정 보고',year:'연말정산 보고'};
 const sgn=x=> x>0? '+'+won(x) : won(x);
-function rpHead(icon,title,sub,badge){ return `<header class="rp-head"><div class="rp-ch">${h(CH())} 재정부${PST()?' · '+h(PST()):''}</div><div class="rp-tt"><span class="rp-ic">${icon}</span><div><h1>${title}</h1><div class="rp-sub">${sub}</div></div></div>${badge?`<span class="rp-badge ${badge[0]}">${badge[1]}</span>`:''}</header>`; }
+function rpHead(icon,title,sub,badge){ if(RP_HIST) sub+=' · <b class="rp-xl">📗 엑셀 기록</b>'; return `<header class="rp-head"><div class="rp-ch">${h(CH())} 재정부${PST()?' · '+h(PST()):''}</div><div class="rp-tt"><span class="rp-ic">${icon}</span><div><h1>${title}</h1><div class="rp-sub">${sub}</div></div></div>${badge?`<span class="rp-badge ${badge[0]}">${badge[1]}</span>`:''}</header>`; }
 function rpFoot(){ const d=new Date(); return `<footer class="rp-foot">${h(CHP())} · 재정부 · ${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()} 작성</footer>`; }
 function wkSub(wk){ return `${dLabel(wk.sun)} 주일 · ${wkLabel(wk)}`; }
 function rpBars(rows,color,total){ const mx=Math.max(1,...rows.map(r=>Math.abs(r[1]))); return rows.length? `<div class="rp-bars">${rows.map(([l,v])=>`<div class="rp-bar"><div class="rp-bl"><span>${l}</span><b>${won(v)}</b></div><div class="rp-bt"><i style="width:${Math.max(3,100*Math.abs(v)/mx)}%;background:${color}"></i></div>${total?`<div class="rp-pc">${Math.round(100*v/total)}%</div>`:''}</div>`).join('')}</div>`:'<div class="rp-empty">기록이 없어요</div>'; }
@@ -2130,8 +2156,9 @@ function rpGive(wk,pastor){
    ${itot?`<section class="rp-int"><div class="rp-int-h"><span>🏦 은행 이자 <small>(헌금 아님 · 통장별)</small></span><b>${won(itot)}</b></div><div class="rp-int-g">${[['일반헌금|이자','일반재정'],['선교목적헌금|이자','선교헌금'],['건축헌금|이자','건축헌금'],['적립금입금|이자','적립금']].map(([k,l])=>{ const v=r2(ints.filter(e=>e.key===k).reduce((s,e)=>s+ +e.amount,0)); return v?`<span>${l} <b>${won(v)}</b></span>`:''; }).join('')}</div><div class="rp-int-t"><span>이번 주 수입 합계 (헌금 + 이자)</span><b>${won(r2(tot+itot))}</b></div></section>`:''}${pastor?`<div class="rp-by">재정부 ${h(S.settings.fin?'재무 '+S.settings.fin:'')} 드림</div>`:''}${rpFoot()}</article>`; }
 /* 2) 주간 지출 내역 */
 function rpSpend(wk){
-  const xs=S.entries.filter(e=>e.kind==='expense'&&+e.month===wk.m&&+e.week===wk.w).sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));
-  const v=weekVals(wk.m), g=k=>(v[k]||[])[wk.w-1]||0; const mk=ACC.filter(a=>isMirror(a.key)&&g(a.key)).map(a=>a.key); const mir=r2(mk.reduce((s,k)=>s+g(k),0));
+  const v=weekVals(wk.m), g=k=>(v[k]||[])[wk.w-1]||0;
+  const xs=isHist(wk.m)? ACC.filter(a=>a.kind==='expense'&&g(a.key)).map(a=>({key:a.key,amount:r2(g(a.key)),memo:''}))   // 엑셀 기록: 계정별 합계
+    : S.entries.filter(e=>e.kind==='expense'&&+e.month===wk.m&&+e.week===wk.w).sort((a,b)=>String(a.ts).localeCompare(String(b.ts))); const mk=ACC.filter(a=>isMirror(a.key)&&g(a.key)).map(a=>a.key); const mir=r2(mk.reduce((s,k)=>s+g(k),0));
   const direct=r2(xs.reduce((s,e)=>s+ +e.amount,0)); const tot=r2(direct+mir);
   const groups=[]; CATS.forEach(c=>{ const it=xs.filter(e=>c.keys.includes(e.key)); if(it.length) groups.push([c.i,c.l,it]); }); const other=xs.filter(e=>!catOf(e.key)); if(other.length) groups.push(['🧾','기타',other]);
   groups.sort((a,b)=>b[2].reduce((s,e)=>s+ +e.amount,0)-a[2].reduce((s,e)=>s+ +e.amount,0));
@@ -2155,11 +2182,11 @@ function rpWeek(wk){ const W=weekCalc(wk.m,wk.w); const obj=Object.fromEntries(A
    <section class="rp-card"><h2>🧾 지출 <span class="rp-r">${won(W.T.exp)}</span></h2>${rpBars(expGroups(obj),'#c4572f',W.T.exp)}</section>
    ${depTiles(W.dep)}
    <section class="rp-card"><h2>📅 ${wk.m}월 누계 <small>(${wk.w}주까지)</small></h2><div class="rp-k3 sm"><div class="i"><span>수입</span><b>${won(mi)}</b></div><div class="e"><span>지출</span><b>${won(me)}</b></div><div class="${mi-me<0?'n':'p'}"><span>잔액</span><b>${sgn(r2(mi-me))}</b></div></div>
-    <div class="rp-wk">${rows.map(([d,t],i)=>`<div class="${i===wk.w-1?'on':''}"><span class="d">${d.getMonth()+1}/${d.getDate()}</span><div class="bb"><i class="i" style="width:${100*t.inc/mx}%"></i><i class="e" style="width:${100*t.exp/mx}%"></i></div><span class="v"><b class="gi">${won(t.inc)}</b><b class="ge">${won(t.exp)}</b></span></div>`).join('')}</div>
+    <div class="rp-wk">${rows.map(([d,t],i)=>`<div class="${i===wk.w-1?'on':''}"><span class="d">${md(d)}</span><div class="bb"><i class="i" style="width:${100*t.inc/mx}%"></i><i class="e" style="width:${100*t.exp/mx}%"></i></div><span class="v"><b class="gi">${won(t.inc)}</b><b class="ge">${won(t.exp)}</b></span></div>`).join('')}</div>
     <div class="rp-leg"><span><i class="i"></i>수입</span><span><i class="e"></i>지출</span></div></section>
    ${rpSign()}${rpFoot()}</article>`; }
 /* 4) 월간 재정 보고 (이번 달 지금까지) */
-function lastWeekOf(m){ const ws=S.entries.filter(e=>+e.month===m).map(e=>+e.week); return ws.length? Math.max(...ws) : 0; }
+function lastWeekOf(m){ if(isHist(m)) return sundays(m).length; const ws=S.entries.filter(e=>+e.month===m).map(e=>+e.week); return ws.length? Math.max(...ws) : 0; }
 function rpMonth(m,upto){ const su=sundays(m); const W=Math.min(su.length, upto||lastWeekOf(m)||1);
   const obj={}; ACC.forEach(a=>obj[a.key]=0); const v=weekVals(m); for(let i=0;i<W;i++) ACC.forEach(a=>obj[a.key]+=v[a.key][i]);
   const T=totalsFrom(obj); const dep={resv:0,bld:0,mis:0,gen:0,total:0}; const rows=[];
@@ -2175,7 +2202,8 @@ function rpMonth(m,upto){ const su=sundays(m); const W=Math.min(su.length, upto|
    <section class="rp-card"><h2>🧾 지출 <span class="rp-r">${won(T.exp)}</span></h2>${rpBars(expGroups(obj),'#c4572f',T.exp)}</section>
    ${depTiles(dep,'통장 입금 ('+m+'월 합계)')}
    ${rpSign()}${rpFoot()}</article>`; }
-function prettyHTML(kind,m,w){ if(kind==='year') return rpYear(); const wk={m,w,sun:sundays(m)[w-1]}; return kind==='year'?rpYear():kind==='pastor'?rpGive(wk,true):kind==='give'?rpGive(wk):kind==='spend'?rpSpend(wk):kind==='week'?rpWeek(wk):rpMonth(m,w); }
+let RP_HIST=false;
+function prettyHTML(kind,m,w){ if(kind==='year'){ RP_HIST=false; return rpYear(); } RP_HIST=isHist(m); if(RP_HIST&&(kind==='give'||kind==='pastor')) kind='week';   /* 지난 달: 교인별(이름) 보고서는 없음 */ const wk={m,w,sun:sundays(m)[w-1]}; return kind==='year'?rpYear():kind==='pastor'?rpGive(wk,true):kind==='give'?rpGive(wk):kind==='spend'?rpSpend(wk):kind==='week'?rpWeek(wk):rpMonth(m,w); }
 const RP_SPAN='.rp-head,.rp-hero,.rp-hero2,.rp-grand,.rp-sign,.rp-foot,.rp-empty,.rp-card.wide,.bal3,.rp-by,.rp-full,.yprev,.yw,.rp-int';
 function colGroup(root){ root.querySelectorAll('article.rp').forEach(a=>{ let box=null; [...a.children].forEach(c=>{ if(c.matches(RP_SPAN)){ box=null; return; } if(!box){ box=document.createElement('div'); box.className='rp-cols'; a.insertBefore(box,c); } box.appendChild(c); }); }); }
 function printPretty(kinds,m,w){ const P=$('#print-pretty'); P.innerHTML=kinds.map(k=>prettyHTML(k,m,w)).join(''); colGroup(P); doPrint('p-pretty'); }
@@ -2201,14 +2229,15 @@ Object.assign(window.HM,{prettyHTML,printPretty,openPretty,weekOf:d=>{ const x=w
 /* ===== 통장 잔액 (4개 통장: 적립금 / 건축헌금 / 선교헌금 / 일반재정) — 엑셀 10주계산 통장내역과 같은 계산 ===== */
 const ACCT_L=[['resv','🏦','적립금'],['bld','🏗️','건축헌금'],['mis','🌏','선교헌금'],['gen','⛪','일반재정']];
 function acctOpening(){ const o=(D.opening||{}).acct_start_10; if(o) { const b={resv:+o.resv||0,bld:+o.bld||0,mis:+o.mis||0,gen:+o.gen||0}; const diff=r2(openingStart()-(b.resv+b.bld+b.mis+b.gen)); b.gen=r2(b.gen+diff); return b; } return {resv:0,bld:0,mis:0,gen:openingStart()}; }
-function monthEndDist(m){ return r2(totalsFrom(monthTotals(m)).dist*0.03); }
-function acctBal(m,w,withMonthEnd){ const b=acctOpening();
-  for(const mm of [10,11]){ const n=sundays(mm).length;
-    for(let i=1;i<=n;i++){ if(mm===m && i>w) break; const c=weekCalc(mm,i); ['resv','bld','mis','gen'].forEach(k=>b[k]=r2(b[k]+c.dep[k])); }
+function monthEndDist(m){ return isHist(m)? histDist(m) : r2(totalsFrom(monthTotals(m)).dist*0.03); }
+function acctBal(m,w,withMonthEnd){ const hist=isHist(m), RR=hist?(x=>x):r2; let b=acctOpening();   /* 지난 달: 엑셀처럼 끝에서만 반올림 */
+  if(hist){ const o=(D.opening||{}).acct_start_fy||{}; b={resv:+o.resv||0,bld:+o.bld||0,mis:+o.mis||0,gen:+o.gen||0}; }
+  for(const mm of (hist? MONTHS.filter(isHist) : [10,11])){ const n=sundays(mm).length;
+    for(let i=1;i<=n;i++){ if(mm===m && i>w) break; const c=weekCalc(mm,i); ['resv','bld','mis','gen'].forEach(k=>b[k]=RR(b[k]+c.dep[k])); }
     const done = mm<m || (mm===m && withMonthEnd);
-    if(done && n<5){ const d=monthEndDist(mm); b.mis=r2(b.mis+d); b.gen=r2(b.gen-d); }   // 다섯째주 칸 선교분배금(3%) — 주일이 4번인 달은 월말에 반영
+    if(done && n<5){ const d=monthEndDist(mm); b.mis=RR(b.mis+d); b.gen=RR(b.gen-d); }   // 다섯째주 칸 선교분배금(3%) — 주일이 4번인 달은 월말에 반영
     if(mm===m) break; }
-  b.total=r2(b.resv+b.bld+b.mis+b.gen); return b; }
+  if(hist) ['resv','bld','mis','gen'].forEach(k=>b[k]=r2(b[k])); b.total=r2(b.resv+b.bld+b.mis+b.gen); return b; }
 function balCardHTML(b,asof,note,cls){ return `<section class="${cls||'rp-card'} bal3"><div class="bal-h"><span class="bal-t">🏦 통장 잔액 <small>4개 통장</small></span><span class="bal-d">${asof}</span></div>
   <div class="bal-g">${ACCT_L.map(([k,i,l])=>`<div><span>${i} ${l}</span><b>${won(b[k])}</b></div>`).join('')}</div>
   <div class="bal-sum"><span>합계</span><b>${won(b.total)}</b></div>${note?`<div class="bal-n">${note}</div>`:''}</section>`; }
@@ -2216,7 +2245,7 @@ function weekBalCard(m,w,cls){ const su=sundays(m); return balCardHTML(acctBal(m
 function monthBalCard(m,W,cls){ const su=sundays(m); const full=W>=su.length; const b=acctBal(m,W,full);
   let note=''; if(!full){ const d=monthEndDist(m); if(d) note=`※ 월말에 선교분배금(지출분배금의 3%) ${won(d)}이 일반재정 → 선교로 옮겨져요 (합계는 같아요).`; }
   return balCardHTML(b,(full?`${m}월 말 기준`:`${kdate(su[W-1])} 주일 기준`)+`<span class="bal-prev"> · 전월이월 ${won(bankBalance(m,0))}</span>`,note,cls); }
-Object.assign(window.HM,{acctBal:(m,w,e)=>acctBal(m,w,e)});
+Object.assign(window.HM,{acctBal:(m,w,e)=>acctBal(m,w,e),calc:{sundays,totalsFrom,monthTotals,bankBalance,weekVals,isHist}});
 
 /* 보고서를 PNG 이미지로 만들어 공유 (카카오톡 등). 인터넷 연결 없이 휴대폰 안에서만 만들어요. */
 function cssText(){ let t=''; for(const ss of document.styleSheets){ try{ for(const r of ss.cssRules) t+=r.cssText+'\n'; }catch(e){} } return t; }
@@ -2250,7 +2279,7 @@ const YEXP=[['👨‍🏫','목회활동비',['목회활동비']],['⛪','예배
 function yearLast(){ let lm=null,lw=0; S.entries.forEach(e=>{ const m=+e.month,w=+e.week; if(!OPEN_MONTHS.includes(m)) return; if(lm===null||MONTHS.indexOf(m)>MONTHS.indexOf(lm)||(m===lm&&w>lw)){ lm=m; lw=w; } });
   const final= lm===11 && lw>=sundays(11).length; return {lm,lw,final}; }
 function yearData(){
-  const months=MONTHS.map(m=>{ const o=monthTotals(m), T=totalsFrom(o); const has=Object.values(o).some(v=>Math.abs(v)>0.001); return {m,o,T,has,dist:has?0.03*T.dist:0}; });
+  const months=MONTHS.map(m=>{ const o=monthTotals(m), T=totalsFrom(o); const has=Object.values(o).some(v=>Math.abs(v)>0.001); return {m,o,T,has,dist:isHist(m)?histDist(m):(has?0.03*T.dist:0)}; });
   const Y={}; ACC.forEach(a=>Y[a.key]=0); months.forEach(x=>{ for(const k in Y) Y[k]+=x.o[k]; });
   const T=totalsFrom(Y), DIST=months.reduce((s,x)=>s+x.dist,0);
   const inc={resv:sumSec(Y,['적립금입금']),bld:sumSec(Y,['건축헌금']),mis:sumSec(Y,['선교목적헌금'])+DIST,gen:sumSec(Y,['일반헌금'])};
