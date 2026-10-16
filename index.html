@@ -778,6 +778,11 @@ body.rshot .rp{border-radius:0;max-width:none}
 .scbtns .btn{white-space:nowrap}
 .scgrid button{display:block!important;width:100%!important;min-height:0!important;height:auto!important;padding:0!important;border:1px solid #eadfd6!important;background:#f4efe9!important}
 .scgrid img{position:absolute;inset:0;width:100%!important;height:100%!important;max-width:none!important;object-fit:cover;object-position:top}
+.scov canvas.live{position:absolute;left:0;top:0;pointer-events:none;max-width:none;max-height:none}
+.scov .scfilters{display:flex;justify-content:center;gap:10px;padding:8px 0 0}
+.scov .scfilters button{background:rgba(255,255,255,.14);color:#fff;border:0;padding:8px 18px;font-size:16px;font-weight:700}
+.scov .scfilters button.on,.scov #cm-auto.on{background:#fff;color:#000}
+.scov button.pri{background:#3f8cc8!important;color:#fff}
 
 @page{size:A4;margin:14mm 13mm}
 @page form{size:A4;margin:9mm 11mm 8mm}
@@ -2280,6 +2285,53 @@ function editYearNotes(){ openModal(`<h3>📝 보고사항 고치기</h3><p clas
   $('#yn-ok').onclick=()=>{ S.settings.yearNotes=$('#yn-t').value.replace(/\s+$/,''); save(); closeModal(); renderRview(); toast('보고사항을 저장했어요'); }; }
 Object.assign(window.HM,{yearData:()=>{ const y=yearData(); return {acc:y.acc,inc:r2(y.T.inc),exp:r2(y.T.exp),dist:y.DIST,incRows:y.incRows.map(r=>[r[1],r[2]]),expRows:y.expRows.map(r=>[r[1],r[2]]),months:y.months.map(x=>[x.m,r2(x.T.inc),r2(x.T.exp)]),last:y.last}; }});
 
+/* ===================== 문서 자동 인식 (에지 + 허프 직선 + 사각형 점수, 밝은 덩어리 보조) ===================== */
+function detectDoc(src, size){ size=size||320;
+  const s=toCanvas(src,size), W=s.width, H=s.height, N=W*H, d=s.getContext('2d').getImageData(0,0,W,H).data;
+  // 회색 + 채도(흰 종이 vs 색 있는 바닥) 섞기
+  let g=new Float32Array(N); for(let i=0;i<N;i++){ const r=d[i*4],gg=d[i*4+1],b=d[i*4+2]; const mx=Math.max(r,gg,b), mn=Math.min(r,gg,b); g[i]=(r*.3+gg*.59+b*.11)-0.5*(mx-mn); }
+  const blur=a=>{ const o=new Float32Array(N); for(let y=0;y<H;y++) for(let x=0;x<W;x++){ let s2=0,c=0; for(let dy=-1;dy<=1;dy++){ const yy=y+dy; if(yy<0||yy>=H) continue; for(let dx=-1;dx<=1;dx++){ const xx=x+dx; if(xx<0||xx>=W) continue; s2+=a[yy*W+xx]; c++; } } o[y*W+x]=s2/c; } return o; };
+  g=blur(blur(g));
+  const mag=new Float32Array(N), dir=new Uint8Array(N);
+  for(let y=1;y<H-1;y++) for(let x=1;x<W-1;x++){ const i=y*W+x;
+    const gx=-g[i-W-1]-2*g[i-1]-g[i+W-1]+g[i-W+1]+2*g[i+1]+g[i+W+1], gy=-g[i-W-1]-2*g[i-W]-g[i-W+1]+g[i+W-1]+2*g[i+W]+g[i+W+1];
+    mag[i]=Math.hypot(gx,gy); let a=Math.atan2(gy,gx)*180/Math.PI; if(a<0) a+=180; dir[i]=a<22.5||a>=157.5?0:a<67.5?1:a<112.5?2:3; }
+  const srt=Array.from(mag).filter(v=>v>0).sort((a,b)=>a-b); const th=Math.max(6, srt[Math.floor(srt.length*.88)]||10);
+  const E=new Uint8Array(N); let ne=0; const off=[[1,0],[1,1],[0,1],[-1,1]];
+  for(let y=2;y<H-2;y++) for(let x=2;x<W-2;x++){ const i=y*W+x, m=mag[i]; if(m<th) continue; const [ox,oy]=off[dir[i]]; if(m>=mag[i+oy*W+ox] && m>=mag[i-oy*W-ox]){ E[i]=1; ne++; } }
+  const cands=[];
+  // 허프 직선
+  const diag=Math.ceil(Math.hypot(W,H)), NT=180, R=2*diag+1, acc=new Int32Array(NT*R), cs=new Float32Array(NT), sn=new Float32Array(NT);
+  for(let t=0;t<NT;t++){ cs[t]=Math.cos(t*Math.PI/NT); sn[t]=Math.sin(t*Math.PI/NT); }
+  for(let i=0;i<N;i++) if(E[i]){ const x=i%W, y=(i/W)|0; for(let t=0;t<NT;t++) acc[t*R+Math.round(x*cs[t]+y*sn[t])+diag]++; }
+  const lines=[], minV=Math.min(W,H)*.12, A=acc.slice();
+  for(let k=0;k<14;k++){ let bi=0,bv=0; for(let i=0;i<A.length;i++) if(A[i]>bv){bv=A[i];bi=i;} if(bv<minV) break; const t=(bi/R)|0, r=bi%R-diag; lines.push({t,r,v:bv});
+    for(let dt=-7;dt<=7;dt++){ const tt=(t+dt+NT)%NT, flip=(t+dt<0||t+dt>=NT); const rr=flip?-r:r; for(let dr=-10;dr<=10;dr++){ const ri=rr+dr+diag; if(ri>=0&&ri<R) A[tt*R+ri]=0; } } }
+  const adiff=(a,b)=>{ const x=Math.abs(a-b)%180; return Math.min(x,180-x); };
+  const inter=(a,b)=>{ const c1=cs[a.t],s1=sn[a.t],c2=cs[b.t],s2=sn[b.t], det=c1*s2-s1*c2; if(Math.abs(det)<1e-6) return null; return [(a.r*s2-s1*b.r)/det,(c1*b.r-a.r*c2)/det]; };
+  const pairs=[]; for(let i=0;i<lines.length;i++) for(let j=i+1;j<lines.length;j++){ const a=lines[i],b=lines[j]; if(adiff(a.t,b.t)>28) continue; const rb=Math.abs(a.t-b.t)>90?-b.r:b.r; if(Math.abs(a.r-rb)<Math.min(W,H)*.12) continue; pairs.push([a,b]); }
+  for(let i=0;i<pairs.length;i++) for(let j=i+1;j<pairs.length;j++){ const [a1,a2]=pairs[i],[b1,b2]=pairs[j]; if(adiff(a1.t,b1.t)<55) continue; if([a1,a2].some(l=>l===b1||l===b2)) continue;
+    const P=[inter(a1,b1),inter(a1,b2),inter(a2,b2),inter(a2,b1)]; if(P.some(p=>!p||p[0]<-W*.06||p[0]>W*1.06||p[1]<-H*.06||p[1]>H*1.06)) continue; cands.push(P.map(p=>[p[0]/W,p[1]/H])); }
+  // 보조: 밝은 덩어리, 외곽 경계
+  try{ const q=blobQuad(s); if(q) cands.push(q); }catch(e){}
+  const Ed=new Uint8Array(N); for(let y=1;y<H-1;y++) for(let x=1;x<W-1;x++){ const i=y*W+x; if(E[i]||E[i-1]||E[i+1]||E[i-W]||E[i+W]||E[i-W-1]||E[i-W+1]||E[i+W-1]||E[i+W+1]) Ed[i]=1; }
+  const order=q=>{ const cx=q.reduce((s2,p)=>s2+p[0],0)/4, cy=q.reduce((s2,p)=>s2+p[1],0)/4; const o=q.slice().sort((a,b)=>Math.atan2(a[1]-cy,a[0]-cx)-Math.atan2(b[1]-cy,b[0]-cx)); let k=0,best=1e9; o.forEach((p,i)=>{ const n=o[(i+1)%4], a=Math.abs(Math.atan2((n[1]-p[1])*H,(n[0]-p[0])*W)); if(a<best-1e-6){best=a;k=i;} }); return o.slice(k).concat(o.slice(0,k)); };
+  const area=q=>{ let a=0; for(let i=0;i<4;i++){ const p=q[i],n=q[(i+1)%4]; a+=p[0]*n[1]-n[0]*p[1]; } return Math.abs(a)/2; };
+  const convex=q=>{ let sg=0; for(let i=0;i<4;i++){ const a=q[i],b=q[(i+1)%4],c=q[(i+2)%4]; const z=(b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]); if(Math.abs(z)<1e-9) return false; const s2=Math.sign(z); if(sg&&s2!==sg) return false; sg=s2; } return true; };
+  const support=q=>{ let hit=0,tot=0; for(let i=0;i<4;i++){ const a=q[i],b=q[(i+1)%4]; for(let k=1;k<40;k++){ const f=.06+.88*k/40, x=Math.round((a[0]+(b[0]-a[0])*f)*W), y=Math.round((a[1]+(b[1]-a[1])*f)*H); tot++; if(x<=1||y<=1||x>=W-2||y>=H-2){ hit+=.35; continue; } if(Ed[y*W+x]) hit++; } } return hit/tot; };
+  const contrast=q=>{ const cx=q.reduce((a,p)=>a+p[0],0)/4*W, cy=q.reduce((a,p)=>a+p[1],0)/4*H; let mn=1e9; const off=Math.max(2,Math.round(Math.min(W,H)/80));
+    for(let i=0;i<4;i++){ const a=[q[i][0]*W,q[i][1]*H], b=[q[(i+1)%4][0]*W,q[(i+1)%4][1]*H]; let nx=-(b[1]-a[1]), ny=b[0]-a[0]; const L=Math.hypot(nx,ny)||1; nx/=L; ny/=L; const mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2; if((cx-mx)*nx+(cy-my)*ny<0){ nx=-nx; ny=-ny; }
+      let sum=0,n=0; for(let k=1;k<30;k++){ const f=.08+.84*k/30, x=a[0]+(b[0]-a[0])*f, y=a[1]+(b[1]-a[1])*f; const xi=Math.round(x+nx*off), yi=Math.round(y+ny*off), xo=Math.round(x-nx*off), yo=Math.round(y-ny*off); if(xo<0||yo<0||xo>=W||yo>=H||xi<0||yi<0||xi>=W||yi>=H) continue; sum+=g[yi*W+xi]-g[yo*W+xo]; n++; }
+      const c=n<5?20:Math.abs(sum/n); if(c<mn) mn=c; } return mn; };
+  let best=null;
+  for(let q of cands){ q=order(q).map(p=>[Math.min(1,Math.max(0,p[0])),Math.min(1,Math.max(0,p[1]))]); const ar=area(q); if(ar<.06||ar>.985||!convex(q)) continue;
+    const sides=[0,1,2,3].map(i=>Math.hypot(q[i][0]-q[(i+1)%4][0],q[i][1]-q[(i+1)%4][1])); if(Math.min(...sides)<.08) continue;
+    const sup=support(q), con=contrast(q), sc=sup*(0.7+0.3*Math.sqrt(ar))*(0.45+0.55*Math.min(1,con/14)); if(!best||sc>best.score) best={quad:q,score:sc,support:sup,area:ar,contrast:con}; }
+  return best||{quad:[[.06,.06],[.94,.06],[.94,.94],[.06,.94]],score:0,support:0,area:0,fallback:true};
+}
+const DOC_OK=.55;
+window.HMScan={detectDoc:(c,s)=>detectDoc(c,s)};
+
 /* ===================== 📷 스캔: 헌금입금 전표 · 지출 영수증 (오프라인 · 이 기기 IndexedDB) ===================== */
 const SC={kind:'dep', week:null};
 const SCK={dep:['💵 헌금입금','은행 입금표 · 입금 확인증'], exp:['🧾 지출 영수증','영수증 · 계산서']};
@@ -2293,14 +2345,13 @@ const scDel=id=>scTx('readwrite',st=>st.delete(id));
 /* --- 이미지 처리 --- */
 function loadImg(src){ return new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=src; }); }
 function toCanvas(src,max){ const w=src.videoWidth||src.naturalWidth||src.width, hh=src.videoHeight||src.naturalHeight||src.height; const k=Math.min(1,max/Math.max(w,hh)); const c=document.createElement('canvas'); c.width=Math.round(w*k); c.height=Math.round(hh*k); c.getContext('2d').drawImage(src,0,0,c.width,c.height); return c; }
-function detectQuad(c){ // 밝은 종이(가장 큰 밝은 덩어리)의 네 모서리
+function blobQuad(c){ // 밝은 종이(가장 큰 밝은 덩어리)의 네 모서리 (자동 인식 보조)
   const s=toCanvas(c,240), W=s.width, H=s.height, d=s.getContext('2d').getImageData(0,0,W,H).data, g=new Uint8Array(W*H), hist=new Array(256).fill(0);
   for(let i=0;i<W*H;i++){ const v=(d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11)|0; g[i]=v; hist[v]++; }
   let sum=0; for(let i=0;i<256;i++) sum+=i*hist[i]; let sB=0,wB=0,best=0,th=128; for(let i=0;i<256;i++){ wB+=hist[i]; if(!wB) continue; const wF=W*H-wB; if(!wF) break; sB+=i*hist[i]; const mB=sB/wB, mF=(sum-sB)/wF, v=wB*wF*(mB-mF)*(mB-mF); if(v>best){best=v;th=i;} }
   const lab=new Int32Array(W*H), stack=[]; let bestN=0,bestL=0,L=0;
   for(let i=0;i<W*H;i++){ if(g[i]<=th||lab[i]) continue; L++; let n=0; stack.push(i); lab[i]=L; while(stack.length){ const p=stack.pop(); n++; const x=p%W, y=(p/W)|0; for(const q of [x>0?p-1:-1, x<W-1?p+1:-1, y>0?p-W:-1, y<H-1?p+W:-1]) if(q>=0 && !lab[q] && g[q]>th){ lab[q]=L; stack.push(q);} } if(n>bestN){bestN=n;bestL=L;} }
-  const fb=[[.06,.06],[.94,.06],[.94,.94],[.06,.94]];
-  if(bestN<W*H*.12 || bestN>W*H*.97) return fb;
+  if(bestN<W*H*.12 || bestN>W*H*.97) return null;
   let tl=[0,0,1e9],tr=[0,0,-1e9],br=[0,0,-1e9],bl=[0,0,1e9];
   for(let i=0;i<W*H;i++){ if(lab[i]!==bestL) continue; const x=i%W, y=(i/W)|0; if(x+y<tl[2]) tl=[x,y,x+y]; if(x-y>tr[2]) tr=[x,y,x-y]; if(x+y>br[2]) br=[x,y,x+y]; if(x-y<bl[2]) bl=[x,y,x-y]; }
   return [tl,tr,br,bl].map(p=>[p[0]/(W-1),p[1]/(H-1)]);
@@ -2344,46 +2395,70 @@ async function renderScan(){ const el=$('#v-scan'); if(!SC.week) SC.week=iso(cur
   $('#sc-file').onchange=pick; $('#sc-cap').onchange=pick; }
 function ov(html){ const o=document.createElement('div'); o.className='scov'; o.innerHTML=html; document.body.appendChild(o); document.body.style.overflow='hidden'; o.close=()=>{ o.remove(); document.body.style.overflow=''; }; return o; }
 let SC_PAGES=[];
+const scAuto=()=>LS.getItem('hm-scan-auto')!=='0';
+function fitRect(box,w,h){ const k=Math.min(box.width/w, box.height/h); const dw=w*k, dh=h*k; return {x:(box.width-dw)/2, y:(box.height-dh)/2, w:dw, h:dh}; }
 async function openCam(){
   const live=window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
   if(!live){ $('#sc-cap').click(); return; }
   let stream; try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1440}},audio:false}); }catch(e){ toast('카메라를 쓸 수 없어 기본 카메라로 열어요'); $('#sc-cap').click(); return; }
   const o=ov(`<div class="sctop"><button id="cm-x">✕ 닫기</button><span class="pages" id="cm-n">${SC_PAGES.length?SC_PAGES.length+'장 찍음':SCK[SC.kind][0]}</span><button id="cm-gal">🖼 사진</button></div>
-    <div class="stage"><video playsinline autoplay muted></video><div class="hint">종이 전체가 보이게 맞추고 셔터를 누르세요</div></div>
-    <div class="scbar"><span style="width:72px"></span><button class="shutter" id="cm-shot" aria-label="찍기"></button><span style="width:72px"></span></div>`);
-  const v=o.querySelector('video'); v.srcObject=stream; try{ await v.play(); }catch(e){}
-  const stop=()=>{ stream.getTracks().forEach(t=>t.stop()); o.close(); };
+    <div class="stage" id="cm-st"><video playsinline autoplay muted></video><canvas class="live"></canvas><div class="hint" id="cm-hint">종이를 화면에 맞춰 주세요</div></div>
+    <div class="scbar"><button id="cm-auto" class="${scAuto()?'on':''}">${scAuto()?'자동':'수동'}</button><button class="shutter" id="cm-shot" aria-label="찍기"></button><span style="width:72px"></span></div>`);
+  const v=o.querySelector('video'), lc=o.querySelector('canvas.live'), st=o.querySelector('#cm-st'), hint=o.querySelector('#cm-hint'); v.srcObject=stream; try{ await v.play(); }catch(e){}
+  let alive=true, last=null, stableSince=0, lastQ=null, busy=false;
+  const stop=()=>{ alive=false; stream.getTracks().forEach(t=>t.stop()); o.close(); };
+  const shoot=()=>{ if(!v.videoWidth) return; const c=toCanvas(v,2400); const q=lastQ; stop(); processShot(c, q); };
   o.querySelector('#cm-x').onclick=()=>{ stop(); if(SC_PAGES.length) savePages(); };
   o.querySelector('#cm-gal').onclick=()=>{ stop(); $('#sc-file').click(); };
-  o.querySelector('#cm-shot').onclick=()=>{ if(!v.videoWidth) return; const c=toCanvas(v,2400); stop(); editQueue([c]); };
+  o.querySelector('#cm-shot').onclick=shoot;
+  o.querySelector('#cm-auto').onclick=e=>{ const on=!scAuto(); LS.setItem('hm-scan-auto',on?'1':'0'); e.target.textContent=on?'자동':'수동'; e.target.classList.toggle('on',on); stableSince=0; };
+  const tick=()=>{ if(!alive) return; if(!v.videoWidth||busy){ setTimeout(tick,120); return; } busy=true;
+    const r=detectDoc(v,240); const box=st.getBoundingClientRect(), f=fitRect(box,v.videoWidth,v.videoHeight);
+    lc.width=Math.round(box.width*devicePixelRatio); lc.height=Math.round(box.height*devicePixelRatio); lc.style.width=box.width+'px'; lc.style.height=box.height+'px';
+    const cx=lc.getContext('2d'); cx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0); cx.clearRect(0,0,box.width,box.height);
+    const ok=r.score>=DOC_OK; const now=performance.now();
+    if(ok){ const q=r.quad; const mv=last?Math.max(...q.map((p,i)=>Math.hypot(p[0]-last[i][0],p[1]-last[i][1]))):1; if(mv<.03){ if(!stableSince) stableSince=now; } else stableSince=0; last=q; lastQ=q;
+      const prog=stableSince?Math.min(1,(now-stableSince)/1000):0; cx.beginPath(); q.forEach((p,i)=>{ const X=f.x+p[0]*f.w, Y=f.y+p[1]*f.h; i?cx.lineTo(X,Y):cx.moveTo(X,Y); }); cx.closePath();
+      cx.fillStyle=prog>0?'rgba(60,200,120,.18)':'rgba(63,140,200,.15)'; cx.fill(); cx.lineWidth=4; cx.strokeStyle=prog>0?'#3cc878':'#5fb0ff'; cx.stroke();
+      hint.textContent=scAuto()?(prog>0?'그대로 잠깐만요…':'종이를 찾았어요'):'종이를 찾았어요 · 셔터를 누르세요';
+      if(scAuto() && prog>=1){ shoot(); return; } }
+    else { stableSince=0; last=null; hint.textContent='종이를 화면에 맞춰 주세요'; }
+    busy=false; setTimeout(tick,110); };
+  tick();
 }
-function editQueue(q){ const c=q.shift(); if(!c){ return; } editPage(c, ()=>editQueue(q), q.length); }
-function editPage(c, next, left){ let quad=detectQuad(c), mode='scan', stage='crop';
-  const o=ov(`<div class="sctop"><button id="ed-x">✕ 취소</button><span class="pages" id="ed-t">모서리를 맞추세요</span><button id="ed-re">↺ 다시</button></div>
-    <div class="stage" id="ed-st"></div>
-    <div class="scbar" id="ed-bar"></div>`);
-  const st=o.querySelector('#ed-st'), bar=o.querySelector('#ed-bar');
-  const drawCrop=()=>{ st.innerHTML=''; const box=st.getBoundingClientRect(); const k=Math.min(box.width/c.width, box.height/c.height); const dw=c.width*k, dh=c.height*k;
+function processShot(c, hintQ){ const r=detectDoc(c,400); let quad=r.score>=DOC_OK?r.quad:(hintQ||r.quad); reviewPage(c, quad, r.score>=DOC_OK||!!hintQ, null, 0); }
+function editQueue(q){ const c=q.shift(); if(!c) return; const r=detectDoc(c,400); reviewPage(c, r.quad, r.score>=DOC_OK, ()=>editQueue(q), q.length); }
+function reviewPage(c, quad, found, next, left){ let mode='scan', warped=warp(c,quad,1600);
+  const o=ov(`<div class="sctop"><button id="rv-x">✕ 취소</button><span class="pages">${found?'자동으로 잘랐어요':'종이를 못 찾았어요 · 모서리 조정을 눌러 주세요'}</span><button id="rv-adj">⌗ 모서리 조정</button></div>
+    <div class="stage" id="rv-st"></div>
+    <div class="scfilters">${['scan:스캔','bw:흑백','orig:원본'].map(s=>{ const [k,l]=s.split(':'); return `<button data-f="${k}" class="${k===mode?'on':''}">${l}</button>`; }).join('')}</div>
+    <div class="scbar"><button id="rv-re">↺ 다시 찍기</button><button id="rv-more">＋한 장 더</button><button id="rv-save" class="pri">저장</button></div>`);
+  const st=o.querySelector('#rv-st');
+  const show=()=>{ const out=filt(warped,mode); st.innerHTML=''; out.style.cssText='max-width:100%;max-height:100%'; st.appendChild(out); o._out=out; o.querySelectorAll('[data-f]').forEach(b=>b.classList.toggle('on',b.dataset.f===mode)); };
+  show();
+  o.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{ mode=b.dataset.f; show(); });
+  const add=async()=>{ SC_PAGES.push(await toBlob(o._out)); o.close(); };
+  o.querySelector('#rv-x').onclick=()=>{ o.close(); if(left) next(); else if(SC_PAGES.length) savePages(); };
+  o.querySelector('#rv-re').onclick=()=>{ o.close(); if(left) next(); else openCam(); };
+  o.querySelector('#rv-more').onclick=async()=>{ await add(); if(left) next(); else openCam(); };
+  o.querySelector('#rv-save').onclick=async()=>{ await add(); if(left) next(); else savePages(); };
+  o.querySelector('#rv-adj').onclick=()=>{ o.close(); adjustCorners(c, quad, q=>reviewPage(c, q, true, next, left), ()=>reviewPage(c, quad, found, next, left)); }; }
+function adjustCorners(c, quad, done, cancel){ quad=quad.map(p=>p.slice());
+  const o=ov(`<div class="sctop"><button id="ad-x">‹ 돌아가기</button><span class="pages">모서리를 끌어서 맞추세요</span><span style="width:60px"></span></div><div class="stage" id="ad-st"></div><div class="scbar"><button id="ad-full">전체</button><button id="ad-auto">자동</button><button id="ad-ok" class="pri">자르기 ›</button></div>`);
+  const st=o.querySelector('#ad-st');
+  const draw=()=>{ st.innerHTML=''; const box=st.getBoundingClientRect(); const k=Math.min(box.width/c.width, box.height/c.height); const dw=c.width*k, dh=c.height*k;
     const wrap=document.createElement('div'); wrap.style.cssText=`position:relative;width:${dw}px;height:${dh}px`; const cv=document.createElement('canvas'); cv.width=Math.round(dw*devicePixelRatio); cv.height=Math.round(dh*devicePixelRatio); cv.style.cssText=`width:${dw}px;height:${dh}px`; cv.getContext('2d').drawImage(c,0,0,cv.width,cv.height); wrap.appendChild(cv);
     const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'); svg.setAttribute('class','q'); svg.setAttribute('viewBox',`0 0 ${dw} ${dh}`); wrap.appendChild(svg);
     const poly=()=>{ svg.innerHTML=`<path d="M0 0H${dw}V${dh}H0Z M${quad.map(p=>p[0]*dw+' '+p[1]*dh).join(' L')}Z" fill="rgba(0,0,0,.45)" fill-rule="evenodd"/><polygon points="${quad.map(p=>p[0]*dw+','+p[1]*dh).join(' ')}" fill="rgba(63,140,200,.12)" stroke="#5fb0ff" stroke-width="3"/>`; };
     quad.forEach((p,n)=>{ const hd=document.createElement('div'); hd.className='h'; const place=()=>{ hd.style.left=quad[n][0]*dw+'px'; hd.style.top=quad[n][1]*dh+'px'; }; place();
-      hd.onpointerdown=e=>{ hd.setPointerCapture(e.pointerId); const mv=ev=>{ const r=wrap.getBoundingClientRect(); quad[n]=[Math.min(1,Math.max(0,(ev.clientX-r.left)/dw)), Math.min(1,Math.max(0,(ev.clientY-r.top)/dh))]; place(); poly(); }; hd.onpointermove=mv; hd.onpointerup=()=>{ hd.onpointermove=null; }; e.preventDefault(); };
+      hd.onpointerdown=e=>{ hd.setPointerCapture(e.pointerId); hd.onpointermove=ev=>{ const r=wrap.getBoundingClientRect(); quad[n]=[Math.min(1,Math.max(0,(ev.clientX-r.left)/dw)), Math.min(1,Math.max(0,(ev.clientY-r.top)/dh))]; place(); poly(); }; hd.onpointerup=()=>{ hd.onpointermove=null; }; e.preventDefault(); };
       wrap.appendChild(hd); });
-    poly(); st.appendChild(wrap);
-    bar.innerHTML=`<button id="ed-full">전체</button><button id="ed-auto">자동</button><button id="ed-ok" style="background:#3f8cc8">자르기 ›</button>`;
-    bar.querySelector('#ed-full').onclick=()=>{ quad=[[0,0],[1,0],[1,1],[0,1]]; drawCrop(); }; bar.querySelector('#ed-auto').onclick=()=>{ quad=detectQuad(c); drawCrop(); };
-    bar.querySelector('#ed-ok').onclick=()=>{ stage='filter'; drawFilter(); }; o.querySelector('#ed-t').textContent='모서리를 맞추세요'; };
-  let warped=null;
-  const drawFilter=()=>{ if(!warped) warped=warp(c,quad,1600); const out=filt(warped,mode); st.innerHTML=''; out.style.cssText='max-width:100%;max-height:100%'; st.appendChild(out); o._out=out; o.querySelector('#ed-t').textContent='보정 고르기';
-    bar.innerHTML=['scan:스캔','bw:흑백','orig:원본'].map(s=>{ const [k,l]=s.split(':'); return `<button data-f="${k}" class="${k===mode?'on':''}">${l}</button>`; }).join('')+`<button id="ed-more">＋한 장 더</button><button id="ed-done" style="background:#3f8cc8">저장</button>`;
-    bar.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{ mode=b.dataset.f; drawFilter(); });
-    const add=async()=>{ SC_PAGES.push(await toBlob(o._out)); o.close(); };
-    bar.querySelector('#ed-more').onclick=async()=>{ await add(); if(left) next(); else openCam(); };
-    bar.querySelector('#ed-done').onclick=async()=>{ await add(); if(left) next(); else savePages(); }; };
-  o.querySelector('#ed-x').onclick=()=>{ o.close(); if(left) next(); else if(SC_PAGES.length) savePages(); };
-  o.querySelector('#ed-re').onclick=()=>{ if(stage==='filter'){ stage='crop'; warped=null; drawCrop(); } else { o.close(); openCam(); } };
-  requestAnimationFrame(drawCrop); }
+    poly(); st.appendChild(wrap); };
+  o.querySelector('#ad-x').onclick=()=>{ o.close(); cancel(); };
+  o.querySelector('#ad-full').onclick=()=>{ quad=[[0,0],[1,0],[1,1],[0,1]]; draw(); };
+  o.querySelector('#ad-auto').onclick=()=>{ quad=detectDoc(c,400).quad; draw(); };
+  o.querySelector('#ad-ok').onclick=()=>{ o.close(); done(quad); };
+  requestAnimationFrame(draw); }
 async function savePages(){ const ps=SC_PAGES; SC_PAGES=[]; if(!ps.length) return; const t=Date.now();
   try{ for(let i=0;i<ps.length;i++) await scPut({id:uid(), week:SC.week, kind:SC.kind, ts:t+i, blob:ps[i]}); toast(`${ps.length}장 저장했어요`); }catch(e){ toast('사진 저장 실패: 저장 공간을 확인하세요'); }
   if(CUR==='scan') renderScan(); }
