@@ -785,6 +785,38 @@ body.rshot .rp{border-radius:0;max-width:none}
 .scov .scfilters button.on,.scov #cm-auto.on{background:#fff;color:#000}
 .scov button.pri{background:#3f8cc8!important;color:#fff}
 
+/* 📥 사진으로 입력 · 확인 화면 (목사님 보고 카드 스타일) */
+#v-imp{padding-bottom:110px}
+.imtop{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:16px;margin:2px 0 8px}
+.iminfo{background:#fff;border:1px solid #f0dccb;border-radius:14px;padding:10px 12px;font-size:14.5px;line-height:1.55;color:#5f4333;margin-bottom:10px}
+.iminfo.sm{font-size:13px;text-align:center;background:none;border:0;color:#8a786b;margin:0}
+.iminfo .lg{display:inline-flex;align-items:center;gap:4px;font-size:13px;margin-right:8px}.iminfo .lg i{width:14px;height:14px;border-radius:4px;display:inline-block}
+.iminfo .lg i.y{background:#fff1c9;border:1.5px solid #e0b44a}.iminfo .lg i.r{background:#ffe1d9;border:1.5px solid #d9673f}
+button.rp-chip{font-family:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.rp-chip.c-mid{background:#fff1c9;border-color:#e0b44a}.rp-chip.c-low{background:#ffe1d9;border-color:#d9673f}
+.rp-chip.c-low b{color:#a33c1c}
+.rp-chip.imadd{background:none;border-style:dashed;color:#9a8473;font-weight:700}
+.imck{display:inline-block;font-size:13px;font-weight:700;border-radius:99px;padding:2px 9px;margin:-4px 0 9px}
+.imck.ok,.imhck.ok{background:#e3f3ea;color:#2b7a55}.imck.bad,.imhck.bad{background:#ffe1d9;color:#a33c1c}
+.imhck{display:inline-block;margin-top:8px;font-size:14px;font-weight:800;border-radius:99px;padding:4px 12px}
+.imaddsec{display:block;width:100%;border:1.5px dashed #e6cdb9;background:none;border-radius:14px;padding:11px;font-size:15px;color:#7a6a5f;margin:4px 0 10px;font-family:inherit}
+.improw{display:flex;gap:8px;align-items:center;background:#fff;border:1px solid #f0dccb;border-radius:14px;padding:8px;margin-bottom:10px}
+.improw button{border:0;padding:0;background:none}.improw img{width:50px;height:66px;object-fit:cover;border-radius:6px;border:1px solid #f0dccb;display:block}.improw span{font-size:13px;color:#7a6a5f}
+.imsave{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom,0px));padding:10px 14px;background:linear-gradient(transparent,#fff7ef 30%);z-index:20}
+.imsave .btn{width:100%;max-width:640px;margin:0 auto;display:block}
+.imsheet-bg{position:fixed;inset:0;background:rgba(30,20,12,.45);z-index:9000;display:flex;align-items:flex-end;justify-content:center}
+.imsheet{background:#fff;width:100%;max-width:560px;border-radius:22px 22px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 30px rgba(0,0,0,.2)}
+.imsheet h3{margin:0 0 8px;font-size:19px}.imsheet p{margin:0 0 10px;font-size:14px;color:#6b5a4e;line-height:1.5}
+.imsheet label{display:block;font-weight:800;font-size:14px;margin:10px 0 4px;color:#5f4333}.imsheet label small{font-weight:600;color:#9a8473}
+.imsheet input,.imsheet select{width:100%;box-sizing:border-box;font-size:19px;padding:11px 12px;border:2px solid #ead6c6;border-radius:12px;background:#fff;font-family:inherit}
+.imsheet .ip-msg{font-size:13.5px;color:#8a5a12;margin:4px 0 0;min-height:1em}
+.imbtns{display:flex;gap:10px;margin-top:16px}.imbtns .btn{flex:1}.btn.danger{color:#b44a22}
+.imac-w{position:relative}.imac{position:absolute;left:0;right:0;top:100%;z-index:3;background:#fff;border-radius:12px;box-shadow:0 8px 22px rgba(0,0,0,.15)}
+.imac div{padding:12px 14px;font-size:18px;border-top:1px solid #f3e6da}.imac div:first-child{border-top:0}
+.imnote{display:block;width:100%;border:0;background:#2e2219;color:#fff;border-radius:14px;padding:13px;font-size:16px;margin:0 0 12px;font-family:inherit}
+.scin{background:#fff3e8;border-radius:18px;padding:10px 10px 2px;margin-bottom:12px}.scin-h{margin:4px 4px 8px;font-size:18px}.scin-h small{display:block;font-size:13px;font-weight:600;color:#8a786b;margin-top:2px}
+#v-imp .rp-ch2 h2{flex:1;min-width:0}#v-imp .rp-sum,#v-imp .rp-cnt{white-space:nowrap}
+
 @page{size:A4;margin:14mm 13mm}
 @page form{size:A4;margin:9mm 11mm 8mm}
 @media print{
@@ -2069,16 +2101,16 @@ $('#ex-json').addEventListener('click',()=>{ S.settings.lastBackup=new Date().to
 $('#ex-config').onclick=()=>{ const d={app:'hanmaum-config',version:1,exported:new Date().toISOString(),config:CFG,accounts:D.accounts,history:D.history,opening:D.opening,histWeeks:D.histWeeks||{},histBank:D.histBank||{}}; download(`교회자료_${stamp()}.json`, new Blob([JSON.stringify(d)],{type:'application/json'})); toastU('교회 자료 파일을 저장했어요. 이 파일은 교회 밖으로 공유하지 마세요'); };
 /* 공개(웹) 버전: 교회 자료 파일이 있어야 시작 */
 function applyConfig(d){ if(!d||d.app!=='hanmaum-config'||!Array.isArray(d.accounts)) throw new Error('교회 자료가 아니에요');
-  LS.setItem(CKEY, JSON.stringify({config:d.config||{},accounts:d.accounts,history:d.history||{},opening:d.opening||{},histWeeks:d.histWeeks||{},histBank:d.histBank||{}}));
+  LS.setItem(CKEY, JSON.stringify({config:d.config||{},accounts:d.accounts,history:d.history||{},opening:d.opening||{},histWeeks:d.histWeeks||{},histBank:d.histBank||{},impSalt:d.impSalt||''}));
   if(d.seed && Array.isArray(d.seed.entries)){ let cur=null; try{ cur=JSON.parse(LS.getItem(SKEY)); }catch(e){} if(!cur||!Array.isArray(cur.entries)||!cur.entries.length) LS.setItem(SKEY, JSON.stringify({entries:d.seed.entries, members:d.seed.members||[], settings:d.seed.settings||{}, counts:d.seed.counts||{}, version:2})); } }
 function histOfferHTML(){ return `<div class="card" style="margin:0 0 12px"><h3>📗 지난 달(12월~9월) 엑셀 기록 받기</h3><div class="hint" style="margin:-4px 0 10px">교회 자료 비밀번호를 한 번 넣으면 지난 달 주별·월별 보고서를 볼 수 있어요. 지금까지 입력한 10월·11월 기록은 그대로예요.</div>
   <input id="hx-pass" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="교회 자료 비밀번호" style="width:100%;box-sizing:border-box;font-size:20px;padding:12px 14px;border-radius:12px;border:2px solid #e6d3c4"><button class="btn" id="hx-go" style="margin-top:10px;width:100%">지난 달 기록 받기</button><div id="hx-msg" class="hint" style="margin-top:8px"></div></div>`; }
 function mergeHist(d){ if(!d||!d.histWeeks) throw new Error('지난 달 기록이 없는 자료예요'); let c=null; try{ c=JSON.parse(LS.getItem(CKEY)); }catch(e){} if(!c||!Array.isArray(c.accounts)) throw new Error('교회 자료가 없어요');
-  c.histWeeks=d.histWeeks; c.histBank=d.histBank||{}; c.opening=Object.assign({},c.opening||{},{acct_start_fy:(d.opening||{}).acct_start_fy||(c.opening||{}).acct_start_fy});
+  c.histWeeks=d.histWeeks; c.histBank=d.histBank||{}; if(d.impSalt) c.impSalt=d.impSalt; c.opening=Object.assign({},c.opening||{},{acct_start_fy:(d.opening||{}).acct_start_fy||(c.opening||{}).acct_start_fy});
   const ks=new Set((c.accounts||[]).map(a=>a.key)); (d.accounts||[]).forEach(a=>{ if(!ks.has(a.key)) c.accounts.push(a); });
   LS.setItem(CKEY, JSON.stringify(c)); }   // 기록(hanmaum-offering-v1)·설정은 건드리지 않음
 function bindHistOffer(){ const go=async()=>{ const p=$('#hx-pass').value, m=$('#hx-msg'); if(!p.trim()){ m.textContent='비밀번호를 넣어 주세요'; return; } m.textContent='여는 중… (몇 초 걸려요)'; $('#hx-go').disabled=true;
-  try{ mergeHist(await decryptBundle(p)); m.textContent='✅ 받았어요!'; setTimeout(()=>location.reload(),300); }
+  try{ const d=await decryptBundle(p); mergeHist(d); await rememberImpKey(p,d.impSalt); m.textContent='✅ 받았어요!'; setTimeout(()=>location.reload(),300); }
   catch(e){ m.textContent=e.message==='pass'?'비밀번호가 맞지 않아요 🙏':e.message==='net'?'인터넷에 연결된 상태에서 다시 해 주세요':'실패: '+e.message; $('#hx-go').disabled=false; } };
   $('#hx-go').onclick=go; $('#hx-pass').onkeydown=e=>{ if(e.key==='Enter') go(); }; }
 const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
@@ -2098,7 +2130,7 @@ function showSetup(){ $('#setup-in').innerHTML=`<div class="art">⛪</div><h3>�
   $('#setup').classList.add('on');
   $('#cfg-demo').onclick=()=>{ location.href=location.pathname+'?demo'; };
   const go=async()=>{ const p=$('#cfg-pass').value; const m=$('#cfg-msg'); if(!p.trim()){ m.textContent='비밀번호를 넣어 주세요'; return; } m.style.color='#5f4333'; m.textContent='여는 중… (몇 초 걸려요)'; $('#cfg-load').disabled=true;
-    try{ applyConfig(await decryptBundle(p)); m.textContent='✅ 불러왔어요!'; setTimeout(()=>location.reload(),300); }
+    try{ const d=await decryptBundle(p); applyConfig(d); await rememberImpKey(p,d.impSalt); m.textContent='✅ 불러왔어요!'; setTimeout(()=>location.reload(),300); }
     catch(e){ m.style.color='#b44a22'; m.textContent=e.message==='pass'?'비밀번호가 맞지 않아요. 다시 확인해 주세요 🙏':e.message==='net'?'인터넷에 연결된 상태에서 다시 해 주세요':'불러오기 실패: '+e.message; $('#cfg-load').disabled=false; } };
   $('#cfg-load').onclick=go; $('#cfg-pass').onkeydown=e=>{ if(e.key==='Enter') go(); };
   $('#cfg-file').onchange=async ev=>{ const f=ev.target.files[0]; if(!f) return; try{ applyConfig(JSON.parse(await f.text())); location.reload(); }catch(e){ alert('불러오기 실패: '+e.message); } }; }
@@ -2129,7 +2161,7 @@ if(DEMO){ $('#demoFlag').innerHTML='<span class="demo-flag">예시 데이터 · 
 /* ===================== 예쁜 보고서 (주간 헌금 현황 · 지출 내역 · 주간/월간 재정 보고) ===================== */
 const RP_LABEL={pastor:'목사님 보고',give:'헌금 현황',spend:'지출 내역',week:'재정 보고',month:'월간 재정 보고',year:'연말정산 보고'};
 const sgn=x=> x>0? '+'+won(x) : won(x);
-function rpHead(icon,title,sub,badge){ if(RP_HIST) sub+=' · <b class="rp-xl">📗 엑셀 기록</b>'; return `<header class="rp-head"><div class="rp-ch">${h(CH())} 재정부${PST()?' · '+h(PST()):''}</div><div class="rp-tt"><span class="rp-ic">${icon}</span><div><h1>${title}</h1><div class="rp-sub">${sub}</div></div></div>${badge?`<span class="rp-badge ${badge[0]}">${badge[1]}</span>`:''}</header>`; }
+function rpHead(icon,title,sub,badge,nopst){ if(RP_HIST) sub+=' · <b class="rp-xl">📗 엑셀 기록</b>'; return `<header class="rp-head"><div class="rp-ch">${h(CH())} 재정부${PST()&&!nopst?' · '+h(PST()):''}</div><div class="rp-tt"><span class="rp-ic">${icon}</span><div><h1>${title}</h1><div class="rp-sub">${sub}</div></div></div>${badge?`<span class="rp-badge ${badge[0]}">${badge[1]}</span>`:''}</header>`; }
 function rpFoot(){ const d=new Date(); return `<footer class="rp-foot">${h(CHP())} · 재정부 · ${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()} 작성</footer>`; }
 function wkSub(wk){ return `${dLabel(wk.sun)} 주일 · ${wkLabel(wk)}`; }
 function rpBars(rows,color,total){ const mx=Math.max(1,...rows.map(r=>Math.abs(r[1]))); return rows.length? `<div class="rp-bars">${rows.map(([l,v])=>`<div class="rp-bar"><div class="rp-bl"><span>${l}</span><b>${won(v)}</b></div><div class="rp-bt"><i style="width:${Math.max(3,100*Math.abs(v)/mx)}%;background:${color}"></i></div>${total?`<div class="rp-pc">${Math.round(100*v/total)}%</div>`:''}</div>`).join('')}</div>`:'<div class="rp-empty">기록이 없어요</div>'; }
@@ -2148,7 +2180,7 @@ function rpGive(wk,pastor){
     const chips=list=>list.map(i=>`<span class="rp-chip"><span>${h(mem(per[i].pid).name)}</span><b>${won(per[i].a)}</b></span>`).join('');
     const body= tags.length>1 ? tags.map(t=>`<div class="rp-subh">${h(t||'기타')}</div><div class="rp-chips">${chips(ord.filter(i=>per[i].tag===t))}</div>`).join('') : `<div class="rp-chips">${chips(ord)}</div>`;
     return `<section class="rp-card"><div class="rp-ch2"><span class="rp-ti">${tIcon(k)}</span><h2>${h(tLabel(k))}</h2><span class="rp-cnt">${ls.length}건</span><b class="rp-sum">${won(sub)}</b></div>${body}${an.length?`<div class="rp-chips"><span class="rp-chip anon"><span>무명 ${an.length}건</span><b>${won(an.reduce((s,e)=>s+ +e.amount,0))}</b></span></div>`:''}</section>`; }).join('');
-  const head= pastor? rpHead('🙏',`${h(CH())} 주간 헌금 보고`,wkSub(wk),['out','목사님 보고용']) : rpHead('💵','주간 헌금 계수 현황',wkSub(wk),['in','교회 내부용']);
+  const head= pastor? rpHead('🙏',`${h(CH())} 주간 헌금 보고`,wkSub(wk),['out','목사님 보고용'],true) : rpHead('💵','주간 헌금 계수 현황',wkSub(wk),['in','교회 내부용']);
   return `<article class="rp${pastor?' pastor':''}">${head}
    <section class="rp-hero g"><div class="rp-hl">총 헌금</div><div class="rp-hv">${won(tot)}</div><div class="rp-hs">헌금하신 분 <b>${named.size}명(가정)</b>${anonN?` · 무명 <b>${anonN}건</b>`:''} · 모두 ${es.length}건</div></section>
    ${cards||'<div class="rp-empty big">이 주일에 입력된 헌금이 없어요</div>'}
@@ -2212,12 +2244,15 @@ let RPV={kind:'week',m:null,w:null};
 function renderRview(){ if(!RPV.m){ const wk=curWeek(); RPV.m=wk.m; RPV.w=wk.w; } const isM=RPV.kind==='month', isY=RPV.kind==='year';
   const tabs=(isM||isY)?'':`<div class="segb rp-tabs">${['pastor','week','give','spend'].map(k=>`<button data-rk="${k}" class="${RPV.kind===k?'on':''}">${({pastor:'🙏 목사님',week:'📊 재정',give:'💵 헌금',spend:'🧾 지출'})[k]}</button>`).join('')}</div>`;
   $('#v-rview').innerHTML=`<button class="backbtn" data-back="report">‹ 보고서</button>${tabs}
-   <div class="rp-acts"><button class="btn" id="rp-print">🖨 인쇄 · PDF</button>${(isM||isY)?'':'<button class="btn soft" id="rp-printall">🖨 3종 모두</button>'}<button class="btn green" id="rp-img">🖼 이미지로 보내기</button>${isY?'<button class="btn soft" id="rp-notes">✏️ 보고사항 고치기</button>':''}${RPV.kind==='week'||isM?'<button class="btn soft" id="rp-share">📤 글로 보내기</button>':''}</div>
+   <div class="rp-acts"><button class="btn" id="rp-print">🖨 인쇄 · PDF</button>${(isM||isY)?'':'<button class="btn soft" id="rp-printall">🖨 3종 모두</button>'}${RPV.kind==='pastor'?'<button class="btn green" id="rp-pastor">💬 목사님께 보내기</button><button class="btn soft" id="rp-save">💾 이미지 저장</button>':'<button class="btn green" id="rp-img">🖼 이미지로 보내기</button>'}${isY?'<button class="btn soft" id="rp-notes">✏️ 보고사항 고치기</button>':''}${RPV.kind==='week'||isM?'<button class="btn soft" id="rp-share">📤 글로 보내기</button>':''}</div>
    ${RPV.kind==='give'||RPV.kind==='pastor'?'<div class="info" style="margin:0 0 12px">🔒 헌금하신 분 이름이 들어 있어요. 교회 내부용으로만 쓰세요.</div>':''}
    <div class="rp-wrap${innerWidth<500?' rp-narrow':''}">${prettyHTML(RPV.kind,RPV.m,RPV.w)}</div>`;
   document.querySelectorAll('#v-rview [data-rk]').forEach(b=>b.onclick=()=>{ RPV.kind=b.dataset.rk; renderRview(); });
   $('#rp-print').onclick=()=>printPretty([RPV.kind],RPV.m,RPV.w);
-  $('#rp-img').onclick=()=>shareImage($('#v-rview article.rp'), isY?`연말정산보고_${FY[11]}.png`:`${RP_LABEL[RPV.kind]}_${RPV.m}월${RPV.w}주.png`, RP_LABEL[RPV.kind]);
+  if($('#rp-pastor')){ const nm=()=>`목사님보고_${FY[RPV.m]}-${String(RPV.m).padStart(2,'0')}-${String(sundays(RPV.m)[RPV.w-1].getDate()).padStart(2,'0')}.png`;
+    $('#rp-pastor').onclick=()=>shareImage($('#v-rview article.rp'),nm(),`${CH()} 주간 헌금 보고`);
+    $('#rp-save').onclick=async()=>{ try{ download(nm(), await elementToPng($('#v-rview article.rp'),1080)); toastU('이미지를 저장했어요'); }catch(e){ toastU('이미지를 만들 수 없어요'); } }; }
+  if($('#rp-img')) $('#rp-img').onclick=()=>shareImage($('#v-rview article.rp'), isY?`연말정산보고_${FY[11]}.png`:`${RP_LABEL[RPV.kind]}_${RPV.m}월${RPV.w}주.png`, RP_LABEL[RPV.kind]);
   if($('#rp-notes')) $('#rp-notes').onclick=editYearNotes;
   if($('#rp-printall')) $('#rp-printall').onclick=()=>printPretty(['week','give','spend'],RPV.m,RPV.w);
   if($('#rp-share')) $('#rp-share').onclick=async()=>{ const t=isM? monthShare(RPV.m,RPV.w) : weekShare(RPV.m,RPV.w); try{ if(navigator.share){ await navigator.share({text:t}); return; } }catch(e){ return; } try{ await navigator.clipboard.writeText(t); toastU('요약을 복사했어요'); }catch(e){} }; }
@@ -2386,7 +2421,7 @@ window.HMScan={detectDoc:(c,s)=>detectDoc(c,s)};
 
 /* ===================== 📷 스캔: 헌금입금 전표 · 지출 영수증 (오프라인 · 이 기기 IndexedDB) ===================== */
 const SC={kind:'dep', week:null};
-const SCK={dep:['💵 헌금입금','은행 입금표 · 입금 확인증'], exp:['🧾 지출 영수증','영수증 · 계산서']};
+const SCK={dep:['💵 헌금입금','은행 입금표 · 입금 확인증'], exp:['🧾 지출 영수증','영수증 · 계산서'], list:['📝 헌금자명단','항목별헌금자명단 → 챗봇이 읽어 헌금 입력'], xform:['📝 지출내역서','지출결의서·지출내역서 → 챗봇이 읽어 지출 입력']};
 /* --- IndexedDB --- */
 let _scdb=null;
 function scDB(){ if(_scdb) return _scdb; _scdb=new Promise((res,rej)=>{ if(!window.indexedDB) return rej(new Error('no idb')); const r=indexedDB.open('hanmaum-scans'+(DEMO?'-demo':''),1); r.onupgradeneeded=()=>r.result.createObjectStore('pages',{keyPath:'id'}); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); return _scdb; }
@@ -2438,13 +2473,15 @@ async function renderScan(){ const el=$('#v-scan'); if(!SC.week) SC.week=iso(cur
     ${ps.length?`<div class="scgrid">${ps.map((p,n)=>`<button data-view="${p.id}"><img data-u="1" src="${blobURL(p.blob)}" alt="${SCK[k][0]} ${n+1}"><span class="n">${n+1}</span></button>`).join('')}</div>`:'<div class="scempty">아직 사진이 없어요</div>'}</div>`; };
   el.innerHTML=`<div class="schead"><button class="btn ghost sm" data-back="home">‹ 홈</button><h2>📷 스캔</h2></div><p class="scsub">입금표와 영수증을 주별로 찍어 두세요. 이 기기에만 저장돼요.</p>
    <div class="scwk"><button class="btn ghost" id="sc-prev" ${i<=0?'disabled':''}>‹</button><b>${wk?wk.m+'월 '+WEEKN[wk.w-1]+' · '+kdate(parseISO(SC.week)):SC.week}</b><button class="btn ghost" id="sc-next" ${i>=ws.length-1?'disabled':''}>›</button></div>
+   <div class="scin" id="sc-in"><h3 class="scin-h">📝 사진으로 입력 <small>찍어서 챗봇에게 보내면 입력 링크가 와요</small></h3>${sec('list')}${sec('xform')}</div>
    ${sec('dep')}${sec('exp')}<input type="file" id="sc-file" accept="image/*" multiple hidden><input type="file" id="sc-cap" accept="image/*" capture="environment" hidden>`;
   $('#sc-prev').onclick=()=>{ SC.week=ws[i-1]; renderScan(); }; $('#sc-next').onclick=()=>{ SC.week=ws[i+1]; renderScan(); };
   el.querySelectorAll('[data-scan]').forEach(b=>b.onclick=()=>{ SC.kind=b.dataset.scan; openCam(); });
   el.querySelectorAll('[data-gal]').forEach(b=>b.onclick=()=>{ SC.kind=b.dataset.gal; $('#sc-file').click(); });
   el.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>viewPage(b.dataset.view, all));
   const pick=async ev=>{ const fs=[...ev.target.files]; ev.target.value=''; if(!fs.length) return; const q=[]; for(const f of fs){ try{ q.push(toCanvas(await loadImg(URL.createObjectURL(f)),2400)); }catch(e){ toast('사진을 열 수 없어요'); } } if(q.length) editQueue(q); };
-  $('#sc-file').onchange=pick; $('#sc-cap').onchange=pick; }
+  $('#sc-file').onchange=pick; $('#sc-cap').onchange=pick;
+  if(SC.focus==='in'){ SC.focus=null; const t=$('#sc-in'); if(t) t.scrollIntoView({block:'start'}); } }
 function ov(html){ const o=document.createElement('div'); o.className='scov'; o.innerHTML=html; document.body.appendChild(o); document.body.style.overflow='hidden'; o.close=()=>{ o.remove(); document.body.style.overflow=''; }; return o; }
 let SC_PAGES=[];
 const scAuto=()=>LS.getItem('hm-scan-auto')!=='0';
@@ -2513,9 +2550,10 @@ function adjustCorners(c, quad, done, cancel){ quad=quad.map(p=>p.slice());
   requestAnimationFrame(draw); }
 async function savePages(){ const ps=SC_PAGES; SC_PAGES=[]; if(!ps.length) return; const t=Date.now();
   try{ for(let i=0;i<ps.length;i++) await scPut({id:uid(), week:SC.week, kind:SC.kind, ts:t+i, blob:ps[i]}); toast(`${ps.length}장 저장했어요`); }catch(e){ toast('사진 저장 실패: 저장 공간을 확인하세요'); }
-  if(CUR==='scan') renderScan(); }
+  if(CUR==='scan') renderScan();
+  if((SC.kind==='list'||SC.kind==='xform') && typeof sendToBot==='function') sendToBot(ps,SC.kind); }
 function viewPage(id, all){ const p=all.find(x=>x.id===id); if(!p) return; const u=blobURL(p.blob); const ps=all.filter(x=>x.kind===p.kind); const n=ps.indexOf(p)+1;
-  const name=`${SC.week}_${p.kind==='dep'?'헌금입금':'지출영수증'}_${n}.jpg`;
+  const name=`${SC.week}_${({dep:'헌금입금',exp:'지출영수증',list:'헌금자명단',xform:'지출내역서'})[p.kind]}_${n}.jpg`;
   const o=ov(`<div class="sctop"><button id="vw-x">✕ 닫기</button><span class="pages">${SCK[p.kind][0]} ${n}/${ps.length}</span><button id="vw-del">🗑 삭제</button></div><div class="stage"><img class="full" src="${u}" alt=""></div><div class="scbar"><button id="vw-share" style="background:#3f8cc8">📤 공유</button><button id="vw-save">💾 저장</button></div>`);
   const close=()=>{ URL.revokeObjectURL(u); o.close(); };
   o.querySelector('#vw-x').onclick=close;
@@ -2532,12 +2570,152 @@ function viewPage(id, all){ const p=all.find(x=>x.id===id); if(!p) return; const
   $('#im-file').addEventListener('change',async ev=>{ const f=ev.target.files[0]; if(!f) return; try{ const data=JSON.parse(await f.text()); if(!Array.isArray(data.scans)||!data.scans.length) return; const have=new Set((await scAll()).map(p=>p.id)); let n=0; for(const s of data.scans){ if(have.has(s.id)) continue; await scPut({id:s.id,week:s.week,kind:s.kind,ts:s.ts,blob:await d2b(s.data)}); n++; } if(n) toast(`사진 ${n}장도 가져왔어요`); }catch(e){} });
 })();
 
+/* ===================== 📥 사진으로 입력: 사진 → 챗봇 → 가져오기 링크(#imp=…) → 확인 화면 → 저장 =====================
+   링크 = AES-GCM 암호문 (교회 자료 비밀번호 · PBKDF2-SHA256, data.enc와 같은 방식). 저장 전에는 아무것도 기록하지 않음. */
+const IMPK='hanmaum-imp-pending';
+const IMP_KINDS={list:['📝 헌금자명단','항목별헌금자명단 사진 → 헌금 자동 입력'], xform:['📝 지출내역서','지출결의서·지출내역서 사진 → 지출 자동 입력']};
+// 링크로 열렸으면 내용을 보관하고 주소창에서 지움 (화면 이동 전에)
+(function(){ const m=/^#imp=([\w.\-]+)/.exec(location.hash); if(m){ LS.setItem(IMPK,m[1]); history.replaceState(null,'',location.pathname+location.search+'#home'); } })();
+window.addEventListener('hashchange',()=>{ const m=/^#imp=([\w.\-]+)/.exec(location.hash); if(m){ LS.setItem(IMPK,m[1]); history.replaceState(null,'',location.pathname+location.search+'#home'); if(unlocked) impCheck(); } });
+const b64u=s=>{ s=s.replace(/-/g,'+').replace(/_/g,'/'); s+='='.repeat((4-s.length%4)%4); return Uint8Array.from(atob(s),c=>c.charCodeAt(0)); };
+const ub64=a=>btoa(String.fromCharCode(...a));
+/* --- 기억된 열쇠 (이 기기 IndexedDB · 꺼낼 수 없는 키) --- */
+function kDB(){ return new Promise((res,rej)=>{ if(!window.indexedDB) return rej(new Error('no idb')); const r=indexedDB.open('hanmaum-keys'+(DEMO?'-demo':''),1); r.onupgradeneeded=()=>r.result.createObjectStore('k',{keyPath:'id'}); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+async function kGet(){ try{ const db=await kDB(); return await new Promise(r=>{ const q=db.transaction('k').objectStore('k').get('imp'); q.onsuccess=()=>r(q.result||null); q.onerror=()=>r(null); }); }catch(e){ return null; } }
+async function kPut(o){ try{ const db=await kDB(); await new Promise(r=>{ const t=db.transaction('k','readwrite'); t.objectStore('k').put(Object.assign({id:'imp'},o)); t.oncomplete=r; t.onerror=r; }); }catch(e){} }
+async function impDerive(pass,salt){ const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass.normalize('NFKC').trim()),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',hash:'SHA-256',salt,iterations:600000},km,{name:'AES-GCM',length:256},false,['decrypt']); }
+async function rememberImpKey(pass,saltB64){ const s=saltB64||D.impSalt; if(!s||!crypto.subtle) return; try{ await kPut({salt:s,key:await impDerive(pass,b64u(s))}); }catch(e){} }
+async function impOpen(code,askPass){ const p=code.split('.'); if(p.length!==4||!/^[12]$/.test(p[0])) throw new Error('bad');
+  const [ver,salt,iv,ct]=p; let key=null; const k=await kGet(); if(k&&k.salt===salt) key=k.key;
+  const tryKey=async K=>{ try{ return await crypto.subtle.decrypt({name:'AES-GCM',iv:b64u(iv)},K,b64u(ct)); }catch(e){ return null; } };
+  let pt=key? await tryKey(key) : null;
+  while(!pt){ const pass=await askPass(); if(pass==null) throw new Error('cancel'); const K=await impDerive(pass,b64u(salt)); pt=await tryKey(K); if(pt) await kPut({salt,key:K}); else askPass.wrong=true; }
+  let bytes=new Uint8Array(pt);
+  if(ver==='2'){ if(!window.DecompressionStream) throw new Error('old'); bytes=new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer()); }
+  return JSON.parse(new TextDecoder().decode(bytes)); }
+function passSheet(){ return new Promise(res=>{ const f=()=>{ const o=document.createElement('div'); o.className='imsheet-bg'; o.innerHTML=`<div class="imsheet"><h3>🔑 교회 자료 비밀번호</h3><p>챗봇이 보낸 입력 자료를 열어요. 이 휴대폰에서 한 번만 넣으면 다음부터는 묻지 않아요.</p>
+   <input id="ip-pass" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="비밀번호"><div id="ip-msg" class="ip-msg">${passSheet.wrong?'비밀번호가 맞지 않아요. 다시 넣어 주세요 🙏':''}</div>
+   <div class="imbtns"><button class="btn soft" id="ip-x">취소</button><button class="btn" id="ip-ok">열기</button></div></div>`; document.body.appendChild(o);
+   const ok=()=>{ const v=o.querySelector('#ip-pass').value; if(!v.trim()) return; o.querySelector('#ip-msg').textContent='여는 중… (몇 초 걸려요)'; setTimeout(()=>{ o.remove(); res(v); },30); };
+   o.querySelector('#ip-ok').onclick=ok; o.querySelector('#ip-pass').onkeydown=e=>{ if(e.key==='Enter') ok(); }; o.querySelector('#ip-x').onclick=()=>{ o.remove(); res(null); }; setTimeout(()=>o.querySelector('#ip-pass').focus(),50); }; f(); }); }
+/* --- 이름 맞추기 (이 기기 교인 명단) --- */
+function lev(a,b){ const d=[...Array(b.length+1).keys()]; for(let i=1;i<=a.length;i++){ let p=d[0]; d[0]=i; for(let j=1;j<=b.length;j++){ const t=d[j]; d[j]=Math.min(d[j]+1,d[j-1]+1,p+(a[i-1]===b[j-1]?0:1)); p=t; } } return d[b.length]; }
+const normN=s=>String(s||'').split('/').map(x=>x.replace(/\s+/g,'')).filter(Boolean).sort().join('/');
+function snapName(raw){ raw=String(raw||'').trim(); if(!raw||/^무명\s*\d*$/.test(raw)) return {pid:ANON,name:'무명',lvl:'hi'};
+  const key=normN(raw), ms=S.members.filter(m=>m.active!==false);
+  const ex=ms.find(m=>normN(m.name)===key); if(ex) return {pid:ex.id,name:ex.name,lvl:'hi'};
+  const P=key.split('/'); let best=[],bd=99; ms.forEach(m=>{ const Q=normN(m.name).split('/'); if(Q.length!==P.length) return; const d=P.reduce((s,p,i)=>s+lev(p,Q[i]),0); if(d<bd){ bd=d; best=[m]; } else if(d===bd) best.push(m); });
+  if(bd<=P.length && best.length===1) return {pid:best[0].id,name:best[0].name,lvl:'mid',from:raw};
+  return {pid:null,name:raw,lvl:'low',from:raw,cands:bd<=P.length?best.map(m=>m.name):[]}; }
+/* --- 확인 화면 상태 --- */
+let IM=null;
+async function impCheck(){ const code=LS.getItem(IMPK); if(!code) return;
+  if(PUB && !D.configured){ return; }   // 교회 자료를 먼저 불러온 뒤 (새로고침 후 다시)
+  passSheet.wrong=false; const ask=async()=>{ const v=await passSheet(); passSheet.wrong=false; return v; };
+  const askW=async()=>{ if(askW.n++) passSheet.wrong=true; return ask(); }; askW.n=0;
+  let d; try{ d=await impOpen(code,askW); }catch(e){ if(e.message==='cancel'){ toastU('나중에 다시 열 수 있어요 (홈의 📥 알림)'); renderHome&&CUR==='home'&&RENDER.home(); return; } LS.removeItem(IMPK); alert(e.message==='old'?'이 휴대폰 브라우저가 너무 오래돼서 열 수 없어요. 브라우저를 업데이트해 주세요.':'입력 자료 링크가 잘못됐어요. 챗봇에게 다시 받아 주세요.'); return; }
+  if(!d||d.app!=='hanmaum-imp'||!/^(off|exp)$/.test(d.kind)){ LS.removeItem(IMPK); alert('입력 자료가 아니에요'); return; }
+  const wk=weekOf(d.date); if(!wk||!OPEN_MONTHS.includes(wk.m)){ LS.removeItem(IMPK); alert(`${d.date}은(는) 입력할 수 없는 날짜예요 (마감된 달).`); return; }
+  IM={d,wk:{m:wk.m,w:wk.w,sun:wk.sun},kind:d.kind,rows:(d.rows||[]).map((r,i)=>impRow(d.kind,r,i))};
+  go('imp'); }
+function impRow(kind,r,i){ const conf=r.c==null?1:+r.c;
+  if(kind==='off'){ const s=snapName(r.n); return {i,pid:s.pid,name:s.name,from:s.from,cands:s.cands||[],key:r.k,amt:+r.a||0,lvl:s.lvl==='low'?'low':(s.lvl==='mid'||conf<0.8)?'mid':'hi',alow:conf<0.8}; }
+  return {i,key:r.k,amt:+r.a||0,memo:r.m||'',bigo:r.b||'',lvl:conf<0.8?'mid':'hi'}; }
+const imKeys=kind=>ACC.filter(a=>kind==='off'? (a.kind==='income'&&!isInt(a.key)) : a.kind==='expense').map(a=>a.key);
+function imLabel(k){ return IM.kind==='off'? tLabel(k) : xLabel(k); }
+function imLabelLong(k){ return IM.kind==='off'? tLabel(k) : (catOf(k)?catOf(k).l+' · ':'')+xLabel(k); }
+function imIcon(k){ return IM.kind==='off'? tIcon(k) : ((catOf(k)||{}).i||'🧾'); }
+function renderImp(){ const el=$('#v-imp'); if(!IM){ el.innerHTML=`<div class="rp-empty big" style="margin-top:30px">가져올 입력 자료가 없어요.<br>챗봇이 보낸 링크를 눌러 주세요.</div><button class="btn" data-back="home" style="margin:16px auto;display:block">홈으로</button>`; return; }
+  const off=IM.kind==='off', d=IM.d, rows=IM.rows.filter(r=>!r.del), su=IM.wk.sun;
+  const keys=[...new Set(imKeys(IM.kind).filter(k=>rows.some(r=>r.key===k)).concat(Object.keys((d.form||{}).sec||{}).filter(k=>BYK[k])))];
+  const tot=r2(rows.reduce((s,r)=>s+r.amt,0)), auto=r2((d.auto||[]).reduce((s,a)=>s+(+a.a||0),0));
+  const named=new Set(rows.filter(r=>off&&r.pid&&r.pid!==ANON).map(r=>r.pid)).size+new Set(rows.filter(r=>off&&!r.pid).map(r=>normN(r.name))).size, anonN=rows.filter(r=>off&&r.pid===ANON).length;
+  const need=rows.filter(r=>r.lvl!=='hi').length, red=rows.filter(r=>r.lvl==='low').length;
+  const ft=(d.form||{}).total, okT=ft==null||Math.abs(ft-(tot+auto))<0.005;
+  const chk=(f,v)=>f==null?'':`<span class="imck ${Math.abs(f-v)<0.005?'ok':'bad'}">${Math.abs(f-v)<0.005?'✓ 양식 계와 같아요':'≠ 양식 계 '+won(f)}</span>`;
+  const card=k=>{ const ls=rows.filter(r=>r.key===k); const sub=r2(ls.reduce((s,r)=>s+r.amt,0)); const f=((d.form||{}).sec||{})[k];
+    return `<section class="rp-card"><div class="rp-ch2"><span class="rp-ti">${imIcon(k)}</span><h2>${h(imLabel(k))}</h2><span class="rp-cnt">${ls.length}건</span><b class="rp-sum">${won(sub)}</b></div>${chk(f,sub)}
+     <div class="rp-chips">${ls.map(r=>`<button class="rp-chip imchip ${r.lvl==='mid'?'c-mid':r.lvl==='low'?'c-low':''} ${off&&r.pid===ANON?'anon':''}" data-ed="${r.i}">${off?`<span>${h(r.name)}</span>`:`<span>${h(r.memo||xLabel(r.key))}</span>`}<b>${won(r.amt)}</b></button>`).join('')}<button class="rp-chip imadd" data-add="${h(k)}">＋ 추가</button></div></section>`; };
+  el.innerHTML=`<div class="imtop"><button class="btn ghost sm" id="im-x">✕ 취소</button><span>📥 사진으로 입력 · 확인</span><span style="width:54px"></span></div>
+   <div class="iminfo">챗봇이 사진을 읽어 채웠어요. <b>칩을 눌러 고치고</b>, 맞으면 맨 아래 <b>저장</b>을 누르세요.${need?`<br><span class="lg"><i class="y"></i>확인 필요</span> <span class="lg"><i class="r"></i>명단에 없는 이름</span>`:''}</div>
+   <div class="rp-wrap rp-narrow"><article class="rp${off?' pastor':''}">
+    <header class="rp-head"><div class="rp-ch">${h(CH())} 재정부</div><div class="rp-tt"><span class="rp-ic">${off?'💵':'🧾'}</span><div><h1>${off?'헌금 입력 확인':'지출 입력 확인'}</h1><div class="rp-sub">${dLabel(su)} 주일 · ${IM.wk.m}월 ${WEEKN[IM.wk.w-1]} · ${off?'항목별헌금자명단':'지출결의서'} 사진</div></div></div><span class="rp-badge in">저장 전</span></header>
+    <div id="im-photo"></div>
+    <section class="rp-hero ${off?'g':'r'}"><div class="rp-hl">${off?'총 헌금':'총 지출'}</div><div class="rp-hv">${won(tot+auto)}</div><div class="rp-hs">${off?`헌금하신 분 <b>${named}명(가정)</b>${anonN?` · 무명 <b>${anonN}건</b>`:''} · 모두 ${rows.length}건`:`직접 지출 <b>${won(tot)}</b> · ${rows.length}건${auto?` · 목적헌금 자동 <b>${won(auto)}</b>`:''}`}</div>
+     ${ft!=null?`<div class="imhck ${okT?'ok':'bad'}">양식 ${off?'헌금총계':'합계'} ${won(ft)} ${okT?'✓ 같아요':'≠ '+won(Math.abs(ft-tot-auto))+' 차이'}</div>`:''}</section>
+    ${keys.map(card).join('')}
+    ${!off&&(d.auto||[]).length?`<section class="rp-card auto"><div class="rp-ch2"><span class="rp-ti">🎯</span><h2>목적헌금 자동 처리</h2><span class="rp-tag">자동</span><b class="rp-sum">${won(auto)}</b></div><div class="rp-item"><div><b>${(d.auto||[]).map(a=>h(a.label||'목적선교비')).join(', ')}</b><small>목적헌금으로 받은 금액이 선교 지출로 자동 처리돼요 · 따로 입력하지 않아요</small></div><span>${won(auto)}</span></div></section>`:''}
+    <button class="imaddsec" id="im-addsec">＋ 다른 ${off?'헌금 종류':'지출 계정'} 추가</button>
+    <section class="rp-grand${off?'':' r'}"><span>${off?'헌금 합계':'지출 합계'}</span><b>${won(tot+auto)}</b></section>
+    ${off?'<div class="iminfo sm">은행 이자는 양식에 없어서 따로 입력해요.</div>':''}
+   </article></div>
+   <div class="imsave"><button class="btn big" id="im-save">${need?`✔ 저장 (확인 필요 ${need}건)`:'✔ 저장'} · ${rows.length}건</button></div>`;
+  $('#im-x').onclick=()=>{ if(confirm('가져온 내용을 버릴까요? (링크로 다시 열 수 있어요)')){ LS.removeItem(IMPK); IM=null; go('home'); } };
+  el.querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>chipEdit(IM.rows.find(r=>r.i===+b.dataset.ed)));
+  el.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{ const r=off?{i:IM.rows.length,pid:null,name:'',key:b.dataset.add,amt:0,lvl:'low',neu:true}:{i:IM.rows.length,key:b.dataset.add,amt:0,memo:'',lvl:'mid',neu:true}; chipEdit(r); });
+  $('#im-addsec').onclick=()=>{ const r=off?{i:IM.rows.length,pid:null,name:'',key:imKeys('off')[0],amt:0,lvl:'low',neu:true}:{i:IM.rows.length,key:imKeys('exp')[0],amt:0,memo:'',lvl:'mid',neu:true}; chipEdit(r); };
+  $('#im-save').onclick=impSave; impPhoto(); }
+async function impPhoto(){ const box=$('#im-photo'); if(!box) return; try{ const ps=(await scAll()).filter(p=>p.week===iso(IM.wk.sun)&&p.kind===(IM.kind==='off'?'list':'xform')).sort((a,b)=>a.ts-b.ts);
+  if(!ps.length) return; box.innerHTML=`<section class="improw">${ps.map(p=>`<button data-ph="${p.id}"><img src="${blobURL(p.blob)}" alt="사진"></button>`).join('')}<span>찍어 둔 사진 · 눌러서 크게 보며 비교하세요</span></section>`;
+  box.querySelectorAll('[data-ph]').forEach(b=>b.onclick=()=>{ const p=ps.find(x=>x.id===b.dataset.ph); const u=blobURL(p.blob); const o=ov(`<div class="sctop"><button id="ph-x">✕ 닫기</button><span class="pages">사진</span><span></span></div><div class="stage" style="overflow:auto"><img class="full" src="${u}" alt="" style="max-width:none;width:200%"></div>`); o.querySelector('#ph-x').onclick=()=>{ URL.revokeObjectURL(u); o.close(); }; }); }catch(e){} }
+function chipEdit(r){ const off=IM.kind==='off'; const o=document.createElement('div'); o.className='imsheet-bg';
+  o.innerHTML=`<div class="imsheet"><h3>${r.neu?'＋ 새로 추가':'✏️ 고치기'}</h3>${r.from&&r.lvl!=='hi'?`<p class="ip-msg">사진에서 읽은 글자: <b>${h(r.from)}</b>${r.cands&&r.cands.length?` · 비슷한 이름: ${r.cands.map(h).join(', ')}`:''}</p>`:''}
+   ${off?`<label>이름 <small>(초성으로 찾기: ㄱㅁㅎ)</small></label><div class="imac-w"><input id="ce-n" value="${h(r.name)}" autocomplete="off" placeholder="이름 또는 무명"><div class="imac" id="ce-ac"></div></div>`:''}
+   <label>${off?'헌금 종류':'지출 계정'}</label><select id="ce-k">${imKeys(IM.kind).map(k=>`<option value="${h(k)}" ${k===r.key?'selected':''}>${h(imLabelLong(k))}</option>`).join('')}</select>
+   <label>금액 (₱)</label><input id="ce-a" inputmode="decimal" value="${r.amt||''}" placeholder="0">
+   ${off?'':`<label>메모 (산출근거)</label><input id="ce-m" value="${h(r.memo||'')}" placeholder="무엇에 썼나요">`}
+   <div class="imbtns">${r.neu?'<button class="btn soft" id="ce-x">취소</button>':'<button class="btn soft danger" id="ce-del">🗑 삭제</button>'}<button class="btn" id="ce-ok">확인</button></div></div>`;
+  document.body.appendChild(o); let pick=r.pid||null;
+  if(off){ const n=o.querySelector('#ce-n'), ac=o.querySelector('#ce-ac'); const list=()=>{ const q=n.value.trim(); pick=null; const L=[{id:ANON,name:'무명'}].concat(S.members.filter(m=>m.active!==false)).filter(m=>q&&matchQ(m.name,q)).slice(0,6);
+      ac.innerHTML=L.map(m=>`<div data-p="${m.id}">${h(m.name)}</div>`).join(''); ac.querySelectorAll('[data-p]').forEach(x=>x.onmousedown=x.ontouchstart=e=>{ e.preventDefault(); n.value=x.textContent; pick=x.dataset.p; ac.innerHTML=''; }); };
+    n.oninput=list; n.onblur=()=>setTimeout(()=>ac.innerHTML='',200); }
+  const close=()=>o.remove();
+  o.querySelector('#ce-ok').onclick=()=>{ const a=parseFloat(String(o.querySelector('#ce-a').value).replace(/[,₱\s]/g,'')); if(!(a>0)){ toast('금액을 넣어 주세요'); return; }
+    r.key=o.querySelector('#ce-k').value; r.amt=r2(a); r.alow=false;
+    if(off){ const nm=o.querySelector('#ce-n').value.trim(); if(!nm){ toast('이름을 넣어 주세요 (모르면 무명)'); return; } const s=pick?{pid:pick,name:pick===ANON?'무명':mem(pick).name,lvl:'hi'}:snapName(nm);
+      if(s.lvl==='hi'){ r.pid=s.pid; r.name=s.name; r.lvl='hi'; r.from=null; } else { r.pid=null; r.name=nm; r.lvl='low'; r.from=nm; r.cands=s.lvl==='mid'?[s.name]:(s.cands||[]); } }
+    else { r.memo=o.querySelector('#ce-m').value.trim(); r.lvl='hi'; }
+    if(r.neu){ delete r.neu; r.i=IM.rows.length; IM.rows.push(r); } close(); renderImp(); };
+  if(o.querySelector('#ce-del')) o.querySelector('#ce-del').onclick=()=>{ r.del=true; close(); renderImp(); toastU('지웠어요',()=>{ delete r.del; renderImp(); }); };
+  if(o.querySelector('#ce-x')) o.querySelector('#ce-x').onclick=close;
+  o.onclick=e=>{ if(e.target===o) close(); }; }
+async function impSave(){ const off=IM.kind==='off', d=IM.d, rows=IM.rows.filter(r=>!r.del&&r.amt>0); if(!rows.length){ toast('저장할 내용이 없어요'); return; }
+  const imps=S.settings.imports||(S.settings.imports={});
+  if(imps[d.id] && !confirm('이 입력 자료는 이미 저장한 적이 있어요. 또 더하면 두 번 기록돼요. 그래도 저장할까요?')) return;
+  const ex=S.entries.filter(e=>e.kind===(off?'income':'expense')&&+e.month===IM.wk.m&&+e.week===IM.wk.w&&!isInt(e.key)).length;
+  if(ex && !confirm(`이 주일에 이미 ${off?'헌금':'지출'} 기록이 ${ex}건 있어요.\n기존 기록은 그대로 두고 ${rows.length}건을 더할까요?`)) return;
+  const unk=off? [...new Set(rows.filter(r=>!r.pid).map(r=>r.name))] : [];
+  if(unk.length && !confirm(`명단에 없는 이름 ${unk.length}명:\n${unk.join(', ')}\n\n새 교인으로 추가하고 저장할까요? (아니면 '취소' 후 칩을 눌러 고치세요)`)) return;
+  const newId={}; unk.forEach(n=>{ newId[n]=addMember(n,{memo:'사진 입력으로 추가'}).id; });
+  const date=iso(IM.wk.sun), tag='imp-'+d.id; let n=0;
+  rows.forEach(r=>{ if(off){ const pid=r.pid||newId[r.name]; addEntry({kind:'income',date,month:IM.wk.m,week:IM.wk.w,key:r.key,amount:r.amt,pid,gid:tag+'-'+pid,memo:'',src:tag}); }
+    else addEntry({kind:'expense',date,month:IM.wk.m,week:IM.wk.w,key:r.key,amount:r.amt,memo:r.memo||'',bigo:r.bigo||'',src:tag}); n++; });
+  imps[d.id]=new Date().toISOString(); save(); LS.removeItem(IMPK);
+  const wk=IM.wk; IM=null; toastU(`${n}건 저장했어요 · ${wk.m}월 ${WEEKN[wk.w-1]}`); RV={mode:'week',m:wk.m,w:wk.w}; go('report'); }
+/* --- 스캔 후 챗봇에게 보내기 --- */
+async function sendToBot(blobs,kind){ const wk=SC.week?weekOf(SC.week):null; const nm=i=>`${SC.week||"사진"}_${kind==='list'?'헌금자명단':'지출내역서'}${blobs.length>1?'_'+(i+1):''}.jpg`;
+  const files=blobs.map((b,i)=>new File([b],nm(i),{type:'image/jpeg'}));
+  const o=ov(`<div class="sctop"><span></span><span class="pages">${IMP_KINDS[kind][0]} · ${wk?wk.m+'월 '+WEEKN[wk.w-1]:''}</span><button id="sb-x">닫기</button></div>
+   <div class="stage" style="flex-direction:column;gap:14px;padding:20px;color:#fff;text-align:center"><div style="font-size:52px">🤖</div><div style="font-size:20px;font-weight:800;line-height:1.5">사진을 챗봇에게 보내 주세요</div>
+   <div style="font-size:15px;line-height:1.6;opacity:.9">① ‘📤 챗봇에게 보내기’ → 대화방 선택 → 보내기<br>② 챗봇이 읽고 <b>입력 링크</b>를 보내 줘요<br>③ 링크를 누르면 확인 화면이 열려요</div></div>
+   <div class="scbar"><button id="sb-save">💾 사진첩에 저장</button><button id="sb-share" class="pri">📤 챗봇에게 보내기</button></div>`);
+  o.querySelector('#sb-x').onclick=()=>o.close();
+  o.querySelector('#sb-save').onclick=()=>{ blobs.forEach((b,i)=>download(nm(i),b)); toast('저장했어요. 대화방에서 사진으로 보내 주세요'); };
+  o.querySelector('#sb-share').onclick=async()=>{ try{ if(navigator.canShare&&navigator.canShare({files})){ await navigator.share({files,title:IMP_KINDS[kind][0]}); o.close(); return; } }catch(e){ if(e&&e.name==='AbortError') return; } blobs.forEach((b,i)=>download(nm(i),b)); toast('공유가 안 돼서 사진첩에 저장했어요. 대화방에서 사진으로 보내 주세요'); }; }
+/* --- 연결 --- */
+(function(){ const sec=document.createElement('section'); sec.className='view'; sec.id='v-imp'; $('#v-home').after(sec); RENDER.imp=()=>renderImp(); SUBOF.imp='home';
+  const rh=RENDER.home; RENDER.home=()=>{ rh(); const ba=document.querySelector('#v-home .bigacts'); if(!ba) return;
+    if(!$('#h-pin')){ const b=document.createElement('button'); b.className='bigact pin'; b.id='h-pin'; b.innerHTML='<span class="i">📝</span><span><span class="t">사진으로 입력</span><br><span class="d">헌금자명단 · 지출내역서 → 챗봇이 읽어 줘요</span></span>'; b.onclick=()=>{ SC.week=null; SC.focus='in'; go('scan'); }; ba.appendChild(b); }
+    if(LS.getItem(IMPK) && !$('#h-imp')){ const n=document.createElement('button'); n.id='h-imp'; n.className='imnote'; n.innerHTML='📥 챗봇이 보낸 입력 자료가 있어요 · <b>열기</b>'; n.onclick=impCheck; ba.before(n); } }; })();
+Object.assign(window.HM,{impCheck,impOpen,snapName,rememberImpKey,_imState:()=>IM,sendToBot});
+
 /* ---------- 시작 ---------- */
 $('#brandName').textContent=CH()+' 재정부'; document.title=CH()+' 헌금계수'; if($('#lock-title')) $('#lock-title').textContent=CH()+' 재정부';
 window.addEventListener('afterprint',()=>document.body.classList.remove('p-weekly','p-monthly','p-stmt','p-forms','p-pretty'));
 window.addEventListener('hashchange',()=>{ const t=(location.hash.match(/#(\w+)/)||[])[1]; if(t && t!==CUR && RENDER[t==='sum'?'report':t]) go(t); });
 if(PUB && 'serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(()=>{});
-function startApp(){ renderTabs(); refreshLockBtn(); const t=(location.hash.match(/#(\w+)/)||[])[1]; go(t||'home'); maybeOnboard(); }
+function startApp(){ renderTabs(); refreshLockBtn(); const t=(location.hash.match(/#(\w+)/)||[])[1]; go(t==='imp'?'home':(t||'home')); if(LS.getItem(IMPK)) setTimeout(impCheck,300); else maybeOnboard(); }
 if(PUB && !D.configured && !DEMO) showSetup();
 else if(getLock()) showLock(startApp); else { unlocked=true; startApp(); }
 
