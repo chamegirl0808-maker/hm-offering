@@ -817,6 +817,10 @@ button.rp-chip{font-family:inherit;color:inherit;cursor:pointer;-webkit-tap-high
 .scin{background:#fff3e8;border-radius:18px;padding:10px 10px 2px;margin-bottom:12px}.scin-h{margin:4px 4px 8px;font-size:18px}.scin-h small{display:block;font-size:13px;font-weight:600;color:#8a786b;margin-top:2px}
 #v-imp .rp-ch2 h2{flex:1;min-width:0}#v-imp .rp-sum,#v-imp .rp-cnt{white-space:nowrap}
 .bigact.pin{grid-column:1/-1;min-height:84px;flex-direction:row;align-items:center;justify-content:flex-start;gap:14px;background:linear-gradient(135deg,#3f8a63,#2c6b4b)}
+.scov .sbguide{background:rgba(63,138,99,.25);border:1px solid rgba(120,200,150,.5);border-radius:14px;padding:12px 14px;font-size:16px;line-height:1.5;word-break:keep-all}
+.scov .scbar.sbbar{flex-direction:column;align-items:stretch;gap:10px;padding-left:18px;padding-right:18px}
+.scov .scbar.sbbar .sbmain{background:linear-gradient(135deg,#3f8a63,#2c6b4b)!important;color:#fff;font-size:20px;font-weight:800;padding:18px 14px;border-radius:18px}
+.scov .scbar.sbbar .sbsub{background:transparent!important;border:1px solid rgba(255,255,255,.35);color:#fff;opacity:.85;font-size:15px;padding:10px 14px}
 
 @page{size:A4;margin:14mm 13mm}
 @page form{size:A4;margin:9mm 11mm 8mm}
@@ -2699,10 +2703,11 @@ async function sendToBot(blobs,kind){ const wk=SC.week?weekOf(SC.week):null; con
   const files=blobs.map((b,i)=>new File([b],nm(i),{type:'image/jpeg'}));
   const o=ov(`<div class="sctop"><span></span><span class="pages">${IMP_KINDS[kind][0]} · ${wk?wk.m+'월 '+WEEKN[wk.w-1]:''}</span><button id="sb-x">닫기</button></div>
    <div class="stage" style="flex-direction:column;gap:14px;padding:20px;color:#fff;text-align:center"><div style="font-size:52px">🤖</div><div style="font-size:20px;font-weight:800;line-height:1.5">사진을 챗봇에게 보내 주세요</div>
-   <div style="font-size:15px;line-height:1.6;opacity:.9">① ‘📤 챗봇에게 보내기’ → 대화방 선택 → 보내기<br>② 챗봇이 읽고 <b>입력 링크</b>를 보내 줘요<br>③ 링크를 누르면 확인 화면이 열려요</div></div>
-   <div class="scbar"><button id="sb-save">💾 사진첩에 저장</button><button id="sb-share" class="pri">📤 챗봇에게 보내기</button></div>`);
+   <div class="sbguide"><b>사진첩에 저장 → 재무봇 채팅에서 사진 첨부로 보내기</b></div>
+   <div style="font-size:15px;line-height:1.6;opacity:.9">① 아래 <b>‘💾 사진첩에 저장’</b> 누르기<br>② 재무봇 채팅방에서 <b>📎 사진 첨부</b>로 보내기<br>③ 챗봇이 보내 준 <b>입력 링크</b>를 누르면 확인 화면이 열려요</div></div>
+   <div class="scbar sbbar"><button id="sb-save" class="sbmain">💾 사진첩에 저장</button><button id="sb-share" class="sbsub">📤 다른 앱으로 공유</button></div>`);
   o.querySelector('#sb-x').onclick=()=>o.close();
-  o.querySelector('#sb-save').onclick=()=>{ blobs.forEach((b,i)=>download(nm(i),b)); toast('저장했어요. 대화방에서 사진으로 보내 주세요'); };
+  o.querySelector('#sb-save').onclick=()=>{ blobs.forEach((b,i)=>download(nm(i),b)); toast('사진첩에 저장했어요. 재무봇 채팅에서 사진 첨부로 보내 주세요 🙏'); };
   o.querySelector('#sb-share').onclick=async()=>{ try{ if(navigator.canShare&&navigator.canShare({files})){ await navigator.share({files,title:IMP_KINDS[kind][0]}); o.close(); return; } }catch(e){ if(e&&e.name==='AbortError') return; } blobs.forEach((b,i)=>download(nm(i),b)); toast('공유가 안 돼서 사진첩에 저장했어요. 대화방에서 사진으로 보내 주세요'); }; }
 /* --- 연결 --- */
 (function(){ const sec=document.createElement('section'); sec.className='view'; sec.id='v-imp'; $('#v-home').after(sec); RENDER.imp=()=>renderImp(); SUBOF.imp='home';
