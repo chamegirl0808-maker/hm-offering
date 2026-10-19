@@ -2625,7 +2625,7 @@ async function impCheck(){ const code=LS.getItem(IMPK); if(!code) return;
   IM={d,wk:{m:wk.m,w:wk.w,sun:wk.sun},kind:d.kind,rows:(d.rows||[]).map((r,i)=>impRow(d.kind,r,i))};
   go('imp'); }
 function impRow(kind,r,i){ const conf=r.c==null?1:+r.c;
-  if(kind==='off'){ const s=snapName(r.n); return {i,pid:s.pid,name:s.name,from:s.from,cands:s.cands||[],key:r.k,amt:+r.a||0,lvl:s.lvl==='low'?'low':(s.lvl==='mid'||conf<0.8)?'mid':'hi',alow:conf<0.8}; }
+  if(kind==='off'){ const s=snapName(r.n); return {i,pid:s.pid,name:s.name,from:s.from,cands:s.cands||[],key:r.k,amt:+r.a||0,memo:r.m||'',lvl:s.lvl==='low'?'low':(s.lvl==='mid'||conf<0.8)?'mid':'hi',alow:conf<0.8}; }
   return {i,key:r.k,amt:+r.a||0,memo:r.m||'',bigo:r.b||'',lvl:conf<0.8?'mid':'hi'}; }
 const imKeys=kind=>ACC.filter(a=>kind==='off'? (a.kind==='income'&&!isInt(a.key)) : a.kind==='expense').map(a=>a.key);
 function imLabel(k){ return IM.kind==='off'? tLabel(k) : xLabel(k); }
@@ -2641,7 +2641,7 @@ function renderImp(){ const el=$('#v-imp'); if(!IM){ el.innerHTML=`<div class="r
   const chk=(f,v)=>f==null?'':`<span class="imck ${Math.abs(f-v)<0.005?'ok':'bad'}">${Math.abs(f-v)<0.005?'✓ 양식 계와 같아요':'≠ 양식 계 '+won(f)}</span>`;
   const card=k=>{ const ls=rows.filter(r=>r.key===k); const sub=r2(ls.reduce((s,r)=>s+r.amt,0)); const f=((d.form||{}).sec||{})[k];
     return `<section class="rp-card"><div class="rp-ch2"><span class="rp-ti">${imIcon(k)}</span><h2>${h(imLabel(k))}</h2><span class="rp-cnt">${ls.length}건</span><b class="rp-sum">${won(sub)}</b></div>${chk(f,sub)}
-     <div class="rp-chips">${ls.map(r=>`<button class="rp-chip imchip ${r.lvl==='mid'?'c-mid':r.lvl==='low'?'c-low':''} ${off&&r.pid===ANON?'anon':''}" data-ed="${r.i}">${off?`<span>${h(r.name)}</span>`:`<span>${h(r.memo||xLabel(r.key))}</span>`}<b>${won(r.amt)}</b></button>`).join('')}<button class="rp-chip imadd" data-add="${h(k)}">＋ 추가</button></div></section>`; };
+     <div class="rp-chips">${ls.map(r=>`<button class="rp-chip imchip ${r.lvl==='mid'?'c-mid':r.lvl==='low'?'c-low':''} ${off&&r.pid===ANON?'anon':''}" data-ed="${r.i}">${off?`<span>${h(r.name)}${/십일조/.test(r.memo||'')?' <small>(십일조)</small>':''}</span>`:`<span>${h(r.memo||xLabel(r.key))}</span>`}<b>${won(r.amt)}</b></button>`).join('')}<button class="rp-chip imadd" data-add="${h(k)}">＋ 추가</button></div></section>`; };
   el.innerHTML=`<div class="imtop"><button class="btn ghost sm" id="im-x">✕ 취소</button><span>📥 사진으로 입력 · 확인</span><span style="width:54px"></span></div>
    <div class="iminfo">챗봇이 사진을 읽어 채웠어요. <b>칩을 눌러 고치고</b>, 맞으면 맨 아래 <b>저장</b>을 누르세요.${need?`<br><span class="lg"><i class="y"></i>확인 필요</span> <span class="lg"><i class="r"></i>명단에 없는 이름</span>`:''}</div>
    <div class="rp-wrap rp-narrow"><article class="rp${off?' pastor':''}">
@@ -2694,7 +2694,7 @@ async function impSave(){ const off=IM.kind==='off', d=IM.d, rows=IM.rows.filter
   if(unk.length && !confirm(`명단에 없는 이름 ${unk.length}명:\n${unk.join(', ')}\n\n새 교인으로 추가하고 저장할까요? (아니면 '취소' 후 칩을 눌러 고치세요)`)) return;
   const newId={}; unk.forEach(n=>{ newId[n]=addMember(n,{memo:'사진 입력으로 추가'}).id; });
   const date=iso(IM.wk.sun), tag='imp-'+d.id; let n=0;
-  rows.forEach(r=>{ if(off){ const pid=r.pid||newId[r.name]; addEntry({kind:'income',date,month:IM.wk.m,week:IM.wk.w,key:r.key,amount:r.amt,pid,gid:tag+'-'+pid,memo:'',src:tag}); }
+  rows.forEach(r=>{ if(off){ const pid=r.pid||newId[r.name]; addEntry({kind:'income',date,month:IM.wk.m,week:IM.wk.w,key:r.key,amount:r.amt,pid,gid:tag+'-'+pid,memo:r.memo||'',src:tag}); }
     else addEntry({kind:'expense',date,month:IM.wk.m,week:IM.wk.w,key:r.key,amount:r.amt,memo:r.memo||'',bigo:r.bigo||'',src:tag}); n++; });
   imps[d.id]=new Date().toISOString(); save(); LS.removeItem(IMPK);
   const wk=IM.wk; IM=null; toastU(`${n}건 저장했어요 · ${wk.m}월 ${WEEKN[wk.w-1]}`); RV={mode:'week',m:wk.m,w:wk.w}; go('report'); }
