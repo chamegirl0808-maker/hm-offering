@@ -744,6 +744,37 @@ body.rshot .rp{border-radius:0;max-width:none}
 @media print{ #print-pretty .rp-bl{font-size:13px;line-height:1.3} #print-pretty .rp-pc{font-size:11px} #print-pretty .rp-bars{gap:2px} #print-pretty .rp-card h2{margin-bottom:5px} }
 #onb-skip,#onb-next{white-space:nowrap}
 .rp-xl{color:#2b7a55;font-weight:800;white-space:nowrap}
+/* 통장별 이번 주 흐름 */
+.flow4{background:linear-gradient(140deg,#eaf1f8,#dbe7f3)!important;border:0;color:#22405c}
+.card.flow4{margin-bottom:14px}
+.flow4 .fl-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.flow4 .fl-t{font-size:19px;font-weight:900} .flow4 .fl-d{font-size:14.5px;font-weight:700;color:#4d6a86}
+.flow4 .fl-carry{display:flex;justify-content:space-between;align-items:center;background:#fff;border:2px solid #9fbad3;border-radius:14px;padding:10px 14px;margin-bottom:10px}
+.flow4 .fl-carry span{font-size:15.5px;font-weight:800;color:#2f557a} .flow4 .fl-carry b{font-size:24px;font-weight:900;font-variant-numeric:tabular-nums;color:#1d3a57}
+.flow4 .fl-row{background:rgba(255,255,255,.8);border-radius:14px;padding:9px 12px;margin-bottom:8px}
+.flow4 .fl-n{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.flow4 .fl-n span{font-size:16px;font-weight:800;color:#2f557a} .flow4 .fl-n b{font-size:19px;font-weight:900;font-variant-numeric:tabular-nums;white-space:nowrap}
+.flow4 .fl-g{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:6px;margin-top:6px}
+.flow4 .fl-g>div{background:#f3f7fb;border-radius:10px;padding:4px 7px;min-width:0}
+.flow4 .fl-g span{display:block;font-size:12px;font-weight:700;color:#5f7b96}
+.flow4 .fl-g b{display:block;font-size:14.5px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.flow4 .fl-g .in b{color:#23704b} .flow4 .fl-g .out b{color:#b0472a}
+.flow4 .fl-tot{background:#1d3a57;color:#fff;border-radius:16px;padding:10px 12px;margin-top:4px}
+.flow4 .fl-tot .fl-n span{color:#cfe0f0} .flow4 .fl-tot .fl-n b{font-size:23px;color:#fff}
+.flow4 .fl-tot .fl-g>div{background:rgba(255,255,255,.12)} .flow4 .fl-tot .fl-g span{color:#b9cde0}
+.flow4 .fl-tot .fl-g b{color:#fff} .flow4 .fl-tot .fl-g .in b{color:#9be3bb} .flow4 .fl-tot .fl-g .out b{color:#ffb79e}
+.flow4 .fl-note{font-size:13px;color:#4d6a86;margin-top:8px;line-height:1.45}
+@media print{
+  #print-pretty .rp>.flow4{column-span:all;-webkit-column-span:all;display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:10px 12px}
+  #print-pretty .flow4 .fl-h,#print-pretty .flow4 .fl-carry,#print-pretty .flow4 .fl-note{grid-column:1/-1;margin:0}
+  #print-pretty .flow4 .fl-carry{padding:6px 12px} #print-pretty .flow4 .fl-carry b{font-size:19px}
+  #print-pretty .flow4 .fl-row,#print-pretty .flow4 .fl-tot{margin:0;padding:7px 8px}
+  #print-pretty .flow4 .fl-n{flex-direction:column;align-items:flex-start;gap:0}
+  #print-pretty .flow4 .fl-n span{font-size:13px} #print-pretty .flow4 .fl-n b,#print-pretty .flow4 .fl-tot .fl-n b{font-size:15.5px}
+  #print-pretty .flow4 .fl-g{grid-template-columns:1fr;gap:3px}
+  #print-pretty .flow4 .fl-g>div{display:flex;justify-content:space-between;align-items:baseline;padding:2px 6px}
+  #print-pretty .flow4 .fl-g span{display:inline;font-size:10.5px} #print-pretty .flow4 .fl-g b{display:inline;font-size:12px}
+}
 
 /* ---------- 📷 스캔 (헌금입금 · 지출 영수증) ---------- */
 .bigact.scan{grid-column:1/-1;min-height:84px;flex-direction:row;align-items:center;justify-content:flex-start;gap:14px;background:linear-gradient(135deg,#3f6e8c,#2c5470)}
@@ -1262,6 +1293,10 @@ function weekCalc(m,w){
   let dist3=0; if(w===5){ dist3=isHist(m)? histDist(m) : r2(totalsFrom(monthTotals(m)).dist*0.03); }   // 지난 달: 엑셀에 기록된 선교분배금 그대로
   const dep={resv:sec('적립금입금')-sec('적립금지출'), bld:sec('건축헌금')-sec('건축지출'), mis:sec('선교목적헌금')-mis+dist3, gen:sec('일반헌금')-T.gen-dist3};
   dep.total=dep.resv+dep.bld+dep.mis+dep.gen;
+  // 통장별 입금/출금 (엑셀 통장내역의 '입금' 행 = 들어온 것 − 나간 것, 그 두 부분을 따로)
+  const din={resv:sec('적립금입금'), bld:sec('건축헌금'), mis:sec('선교목적헌금')+dist3, gen:sec('일반헌금')};
+  const dout={resv:sec('적립금지출'), bld:sec('건축지출'), mis, gen:T.gen+dist3};
+  dep.in=din; dep.out=dout;
   return {v,g,T,dep,prev:bankBalance(m,w-1),cur:bankBalance(m,w),dist3};
 }
 const sumK=(g,keys)=>keys.reduce((t,k)=>t+g(k),0);
@@ -1745,7 +1780,7 @@ function renderHome(){
     <div class="sc inc"><div class="l">💵 이번 주 헌금</div><div class="v num">${won(T.inc)}</div><div class="s">${ppl}명 · ${inc.length}건</div></div>
     <div class="sc exp"><div class="l">🧾 이번 주 지출</div><div class="v num">${won(T.exp)}</div><div class="s">주간 잔액 ${won(T.inc-T.exp)}</div></div>
    </div>
-   ${weekBalCard(wk.m,wk.w,'card')}
+   ${flowCardHTML(wk.m,wk.w,'card')}
    <div class="bigacts">
     <button class="bigact a" id="h-count"><span class="i">💵</span><span><span class="t">${inc.length?'계수 이어하기':'헌금 계수 시작'}</span><br><span class="d">이름 찾고 금액만 누르면 돼요</span></span></button>
     <button class="bigact b" id="h-exp"><span class="i">🧾</span><span><span class="t">지출 입력</span><br><span class="d">무엇에 썼는지 고르기</span></span></button>
@@ -2024,7 +2059,7 @@ function renderReport(){ if(!RV.m){ const wk=curWeek(); RV.m=wk.m; RV.w=wk.w; }
    ${week?`<div class="scroller" id="r-weeks">${su.map((d,i)=>`<button data-w="${i+1}" class="${i+1===w?'on':''}">${kdate(d)}<small>${WEEKN[i]}${S.counts[m+'-'+(i+1)]&&S.counts[m+'-'+(i+1)].done?' ✓':''}</small></button>`).join('')}</div>`:''}
    <div class="statcards">${kpis}</div>
    ${hist?`<div class="info" style="margin:0 0 12px">📗 ${FY[m]}년 ${m}월은 <b>엑셀 기록</b>(마감된 장부)이에요. 보기만 할 수 있고 고칠 수 없어요. 교인별 헌금은 없어요.</div>`:(!hasW&&PUB&&m!==10&&m!==11?histOfferHTML():'')}
-   ${week? weekBalCard(m,w,'card') : (hasW? monthBalCard(m,lastWeekOf(m)||1,'card') : '')}
+   ${week? flowCardHTML(m,w,'card') : (hasW? monthBalCard(m,lastWeekOf(m)||1,'card') : '')}
    ${week&&c&&c.cash!=null?`<div class="status ${Math.abs(c.cash-T.inc)<0.005?'ok':'warn'}">${Math.abs(c.cash-T.inc)<0.005?'✅ 세어 본 현금과 기록이 맞아요':'⚠️ 세어 본 현금과 '+won(Math.abs(c.cash-T.inc))+' 차이가 있어요'}</div>`:''}
    <div class="card" style="margin-bottom:14px">${chart}</div>
    <div class="grid2v"><div class="card"><h3>헌금 종류별</h3>${hbars(incGroups(obj),'#2b7a55')}</div><div class="card"><h3>어디에 썼나요</h3>${hbars(expGroups(obj),'#c4572f')}</div></div>
@@ -2214,10 +2249,9 @@ function rpWeek(wk){ const W=weekCalc(wk.m,wk.w); const obj=Object.fromEntries(A
   const mx=Math.max(1,...rows.map(r=>Math.max(r[1].inc,r[1].exp)));
   return `<article class="rp">${rpHead('📊','주간 재정 보고',wkSub(wk),['out','보고·공유용'])}
    ${rpSumHero(W.T.inc,W.T.exp,W.prev,W.cur,['수입','지출','금주 잔액','전주이월'])}
-   ${weekBalCard(wk.m,wk.w)}
+   ${flowCardHTML(wk.m,wk.w)}
    <section class="rp-card"><h2>💵 수입 <span class="rp-r">${won(W.T.inc)}</span></h2>${rpBars(incGroups(obj),'#2b7a55',W.T.inc)}</section>
    <section class="rp-card"><h2>🧾 지출 <span class="rp-r">${won(W.T.exp)}</span></h2>${rpBars(expGroups(obj),'#c4572f',W.T.exp)}</section>
-   ${depTiles(W.dep)}
    <section class="rp-card"><h2>📅 ${wk.m}월 누계 <small>(${wk.w}주까지)</small></h2><div class="rp-k3 sm"><div class="i"><span>수입</span><b>${won(mi)}</b></div><div class="e"><span>지출</span><b>${won(me)}</b></div><div class="${mi-me<0?'n':'p'}"><span>잔액</span><b>${sgn(r2(mi-me))}</b></div></div>
     <div class="rp-wk">${rows.map(([d,t],i)=>`<div class="${i===wk.w-1?'on':''}"><span class="d">${md(d)}</span><div class="bb"><i class="i" style="width:${100*t.inc/mx}%"></i><i class="e" style="width:${100*t.exp/mx}%"></i></div><span class="v"><b class="gi">${won(t.inc)}</b><b class="ge">${won(t.exp)}</b></span></div>`).join('')}</div>
     <div class="rp-leg"><span><i class="i"></i>수입</span><span><i class="e"></i>지출</span></div></section>
@@ -2241,7 +2275,7 @@ function rpMonth(m,upto){ const su=sundays(m); const W=Math.min(su.length, upto|
    ${rpSign()}${rpFoot()}</article>`; }
 let RP_HIST=false;
 function prettyHTML(kind,m,w){ if(kind==='year'){ RP_HIST=false; return rpYear(); } RP_HIST=isHist(m); if(RP_HIST&&(kind==='give'||kind==='pastor')) kind='week';   /* 지난 달: 교인별(이름) 보고서는 없음 */ const wk={m,w,sun:sundays(m)[w-1]}; return kind==='year'?rpYear():kind==='pastor'?rpGive(wk,true):kind==='give'?rpGive(wk):kind==='spend'?rpSpend(wk):kind==='week'?rpWeek(wk):rpMonth(m,w); }
-const RP_SPAN='.rp-head,.rp-hero,.rp-hero2,.rp-grand,.rp-sign,.rp-foot,.rp-empty,.rp-card.wide,.bal3,.rp-by,.rp-full,.yprev,.yw,.rp-int';
+const RP_SPAN='.rp-head,.rp-hero,.rp-hero2,.rp-grand,.rp-sign,.rp-foot,.rp-empty,.rp-card.wide,.bal3,.flow4,.rp-by,.rp-full,.yprev,.yw,.rp-int';
 function colGroup(root){ root.querySelectorAll('article.rp').forEach(a=>{ let box=null; [...a.children].forEach(c=>{ if(c.matches(RP_SPAN)){ box=null; return; } if(!box){ box=document.createElement('div'); box.className='rp-cols'; a.insertBefore(box,c); } box.appendChild(c); }); }); }
 function printPretty(kinds,m,w){ const P=$('#print-pretty'); P.innerHTML=kinds.map(k=>prettyHTML(k,m,w)).join(''); colGroup(P); doPrint('p-pretty'); }
 /* 화면: 보고서 미리보기 */
@@ -2281,11 +2315,22 @@ function acctBal(m,w,withMonthEnd){ const hist=isHist(m), RR=hist?(x=>x):r2; let
 function balCardHTML(b,asof,note,cls){ return `<section class="${cls||'rp-card'} bal3"><div class="bal-h"><span class="bal-t">🏦 통장 잔액 <small>4개 통장</small></span><span class="bal-d">${asof}</span></div>
   <div class="bal-g">${ACCT_L.map(([k,i,l])=>`<div><span>${i} ${l}</span><b>${won(b[k])}</b></div>`).join('')}</div>
   <div class="bal-sum"><span>합계</span><b>${won(b.total)}</b></div>${note?`<div class="bal-n">${note}</div>`:''}</section>`; }
+/* 통장별 이번 주 흐름: 전주이월 · 입금 · 출금 · 잔액 (엑셀 10주계산 통장내역 167~206행과 같은 규칙) */
+function acctFlow(m,w){ const prev=acctBal(m,w-1), cur=acctBal(m,w), c=weekCalc(m,w); const rows=ACCT_L.map(([k,i,l])=>({k,i,l,prev:prev[k],inc:r2(c.dep.in[k]),out:r2(c.dep.out[k]),cur:cur[k]}));
+  const t={prev:prev.total,inc:r2(rows.reduce((s,r)=>s+r.inc,0)),out:r2(rows.reduce((s,r)=>s+r.out,0)),cur:cur.total}; return {rows,t,dist3:c.dist3}; }
+function flowCardHTML(m,w,cls){ const su=sundays(m); const F=acctFlow(m,w); const n=x=>fnum0(x);
+  return `<section class="${cls||'rp-card'} flow4"><div class="fl-h"><span class="fl-t">🏦 통장별 이번 주</span><span class="fl-d">${kdate(su[w-1])} 주일 기준</span></div>
+  <div class="fl-carry"><span>전주 총 이월금액</span><b>${won(F.t.prev)}</b></div>
+  ${F.rows.map(r=>`<div class="fl-row"><div class="fl-n"><span>${r.i} ${r.l}</span><b>${won(r.cur)}</b></div>
+   <div class="fl-g"><div><span>전주 이월</span><b>${n(r.prev)}</b></div><div class="in"><span>입금</span><b>${r.inc?'+'+n(r.inc):'0'}</b></div><div class="out"><span>출금</span><b>${r.out?'−'+n(r.out):'0'}</b></div></div></div>`).join('')}
+  <div class="fl-tot"><div class="fl-n"><span>합계</span><b>${won(F.t.cur)}</b></div>
+   <div class="fl-g"><div><span>전주 이월</span><b>${n(F.t.prev)}</b></div><div class="in"><span>입금</span><b>+${n(F.t.inc)}</b></div><div class="out"><span>출금</span><b>−${n(F.t.out)}</b></div></div></div>
+  <div class="fl-note">잔액 = 전주 이월 + 입금 − 출금 · 목적헌금은 선교헌금 통장에서 같은 금액이 선교비로 나가요${F.dist3?` · 선교분배금 ${won(F.dist3)}은 일반재정 → 선교헌금으로 옮겨요`:''}</div></section>`; }
 function weekBalCard(m,w,cls){ const su=sundays(m); return balCardHTML(acctBal(m,w),`${kdate(su[w-1])} 주일 기준`,'',cls); }
 function monthBalCard(m,W,cls){ const su=sundays(m); const full=W>=su.length; const b=acctBal(m,W,full);
   let note=''; if(!full){ const d=monthEndDist(m); if(d) note=`※ 월말에 선교분배금(지출분배금의 3%) ${won(d)}이 일반재정 → 선교로 옮겨져요 (합계는 같아요).`; }
   return balCardHTML(b,(full?`${m}월 말 기준`:`${kdate(su[W-1])} 주일 기준`)+`<span class="bal-prev"> · 전월이월 ${won(bankBalance(m,0))}</span>`,note,cls); }
-Object.assign(window.HM,{acctBal:(m,w,e)=>acctBal(m,w,e),calc:{sundays,totalsFrom,monthTotals,bankBalance,weekVals,isHist}});
+Object.assign(window.HM,{acctFlow:(m,w)=>acctFlow(m,w),acctBal:(m,w,e)=>acctBal(m,w,e),calc:{sundays,totalsFrom,monthTotals,bankBalance,weekVals,isHist}});
 
 /* 보고서를 PNG 이미지로 만들어 공유 (카카오톡 등). 인터넷 연결 없이 휴대폰 안에서만 만들어요. */
 function cssText(){ let t=''; for(const ss of document.styleSheets){ try{ for(const r of ss.cssRules) t+=r.cssText+'\n'; }catch(e){} } return t; }
