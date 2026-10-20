@@ -866,6 +866,21 @@ button.rp-chip{font-family:inherit;color:inherit;cursor:pointer;-webkit-tap-high
 .scov .scbar.sbbar .sbmain{background:linear-gradient(135deg,#3f8a63,#2c6b4b)!important;color:#fff;font-size:20px;font-weight:800;padding:18px 14px;border-radius:18px}
 .scov .scbar.sbbar .sbsub{background:transparent!important;border:1px solid rgba(255,255,255,.35);color:#fff;opacity:.85;font-size:15px;padding:10px 14px}
 
+.bigact.link{grid-column:1/-1;min-height:84px;flex-direction:row;align-items:center;justify-content:flex-start;gap:14px;background:linear-gradient(135deg,#2f6fa8,#22507d)}
+.impaste-btn{width:100%;font-size:21px!important;padding:16px!important;margin:4px 0 6px;background:linear-gradient(135deg,#2f6fa8,#22507d)!important}
+.imsheet textarea{width:100%;box-sizing:border-box;font-size:16px;padding:10px 12px;border:2px solid #ead6c6;border-radius:12px;font-family:inherit;resize:vertical;word-break:break-all}
+.imtabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 8px}
+.imtabs button{border:2px solid #ead6c6;background:#fff;border-radius:14px;padding:10px 8px;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:2px;color:#5f4333}
+.imtabs button span{font-size:15.5px;font-weight:800}.imtabs button b{font-size:18px;font-variant-numeric:tabular-nums}
+.imtabs button.on{background:#2e2219;border-color:#2e2219;color:#fff}
+.imout-bg{position:fixed;inset:0;z-index:9999;background:rgba(30,20,12,.72);display:flex;align-items:center;justify-content:center;padding:16px}
+.imout{background:#fff;border-radius:22px;max-width:480px;width:100%;padding:20px 18px;box-shadow:0 10px 40px rgba(0,0,0,.35);text-align:center}
+.imout-i{font-size:46px}.imout h3{margin:4px 0 8px;font-size:21px;color:#a93c1f;word-break:keep-all}.imout p{font-size:16px;line-height:1.55;color:#4a3a2e;margin:0 0 12px;word-break:keep-all}
+.imout-copy{width:100%;font-size:22px!important;padding:16px!important;background:linear-gradient(135deg,#3f8a63,#2c6b4b)!important}
+.imout-msg{min-height:1.2em;font-size:15px;color:#1d6a43;margin:8px 0;font-weight:700}
+.imout ol{text-align:left;font-size:16px;line-height:1.7;margin:6px 0 12px;padding-left:24px;color:#3b2c21}
+.imout-here{border:0;background:none;color:#8a786b;text-decoration:underline;font-size:14px;font-family:inherit;padding:6px}
+
 @page{size:A4;margin:14mm 13mm}
 @page form{size:A4;margin:9mm 11mm 8mm}
 @media print{
@@ -2639,8 +2654,35 @@ function viewPage(id, all){ const p=all.find(x=>x.id===id); if(!p) return; const
 const IMPK='hanmaum-imp-pending';
 const IMP_KINDS={list:['📝 헌금자명단','항목별헌금자명단 사진 → 헌금 자동 입력'], xform:['📝 지출내역서','지출결의서·지출내역서 사진 → 지출 자동 입력']};
 // 링크로 열렸으면 내용을 보관하고 주소창에서 지움 (화면 이동 전에)
-(function(){ const m=/^#imp=([\w.\-]+)/.exec(location.hash); if(m){ LS.setItem(IMPK,m[1]); history.replaceState(null,'',location.pathname+location.search+'#home'); } })();
-window.addEventListener('hashchange',()=>{ const m=/^#imp=([\w.\-]+)/.exec(location.hash); if(m){ LS.setItem(IMPK,m[1]); history.replaceState(null,'',location.pathname+location.search+'#home'); if(unlocked) impCheck(); } });
+const isApp=()=>{ try{ return matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches||matchMedia('(display-mode: minimal-ui)').matches||navigator.standalone===true||/^android-app:/.test(document.referrer); }catch(e){ return false; } };
+let IMP_OUT=null;   // 설치한 앱 밖(채팅 앱 안 브라우저 등)에서 링크가 열렸을 때 코드
+(function(){ const m=/^#imp=([\w.\-]+)/.exec(location.hash); if(m){ LS.setItem(IMPK,m[1]); history.replaceState(null,'',location.pathname+location.search+'#home'); if(!isApp()) IMP_OUT=m[1]; } })();
+window.addEventListener('hashchange',()=>{ const m=/^#imp=([\w.\-]+)/.exec(location.hash); if(m){ LS.setItem(IMPK,m[1]); history.replaceState(null,'',location.pathname+location.search+'#home'); if(!isApp()){ IMP_OUT=m[1]; outNotice(); } else if(unlocked) impCheck(); } });
+/* 링크 글 / 코드에서 코드만 꺼내기 */
+function impCodeOf(t){ t=String(t||'').replace(/\s+/g,''); const m=/#imp=([\w.\-]+)/.exec(t)||/(?:^|[^\w.\-])([12]\.[\w\-]{8,}\.[\w\-]{8,}\.[\w\-]{16,})/.exec(' '+t); return m?m[1]:null; }
+async function copyText(t){ try{ await navigator.clipboard.writeText(t); return true; }catch(e){} try{ const a=document.createElement('textarea'); a.value=t; a.setAttribute('readonly',''); a.style.cssText='position:fixed;top:0;left:0;opacity:0'; document.body.appendChild(a); a.select(); a.setSelectionRange(0,t.length); const ok=document.execCommand('copy'); a.remove(); return ok; }catch(e){ return false; } }
+/* 설치한 앱이 아닌 곳에서 열렸을 때 안내 */
+function outNotice(){ const code=IMP_OUT; if(!code||$('#im-out')) return; const o=document.createElement('div'); o.id='im-out'; o.className='imout-bg';
+  o.innerHTML=`<div class="imout"><div class="imout-i">⚠️</div><h3>여기는 설치한 재무부 앱이 아니에요</h3>
+   <p>채팅 앱 안에서 열린 화면이라, 여기서 저장하면 <b>휴대폰의 재무부 앱에는 들어가지 않아요.</b></p>
+   <button class="btn big imout-copy" id="io-copy">📋 코드 복사</button><div class="imout-msg" id="io-msg"></div>
+   <ol><li>위의 <b>‘📋 코드 복사’</b>를 누르세요</li><li>휴대폰 홈 화면의 <b>재무부 앱</b>을 여세요</li><li><b>‘🔗 재무봇 링크 넣기’</b> → <b>붙여넣기</b> → <b>열기</b></li></ol>
+   <button class="imout-here" id="io-here">이 화면에서 그냥 열기</button></div>`;
+  document.body.appendChild(o);
+  o.querySelector('#io-copy').onclick=async()=>{ const ok=await copyText(code); o.querySelector('#io-msg').innerHTML=ok?'✅ 복사했어요! 이제 재무부 앱을 열어 <b>링크 넣기</b>를 누르세요.':'복사가 안 됐어요. 챗봇 메시지의 링크를 길게 눌러 복사해 주세요.'; };
+  o.querySelector('#io-here').onclick=()=>{ o.remove(); IMP_OUT=null; if(unlocked) impCheck(); }; }
+/* 🔗 재무봇 링크 넣기 (앱 안에서 붙여넣기) */
+function pasteSheet(){ const o=document.createElement('div'); o.className='imsheet-bg'; o.id='im-paste';
+  o.innerHTML=`<div class="imsheet"><h3>🔗 재무봇 링크 넣기</h3><p>재무봇이 보낸 <b>링크</b>(또는 코드)를 복사한 다음 <b>‘📋 붙여넣기’</b>를 누르세요.</p>
+   <button class="btn big impaste-btn" id="pp-paste">📋 붙여넣기</button>
+   <label>또는 아래 칸을 <b>길게 눌러</b> 붙여넣기</label><textarea id="pp-t" rows="3" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="https://…#imp=… 또는 코드"></textarea>
+   <div id="pp-msg" class="ip-msg"></div><div class="imbtns"><button class="btn soft" id="pp-x">취소</button><button class="btn" id="pp-ok">열기</button></div></div>`;
+  document.body.appendChild(o); const t=o.querySelector('#pp-t'), msg=o.querySelector('#pp-msg');
+  const chk=()=>{ const c=impCodeOf(t.value); msg.textContent=t.value.trim()?(c?'✅ 재무봇 코드를 찾았어요. ‘열기’를 누르세요.':'재무봇 링크가 아닌 것 같아요. 다시 복사해 주세요.'):''; return c; };
+  t.oninput=chk;
+  o.querySelector('#pp-paste').onclick=async()=>{ try{ const v=await navigator.clipboard.readText(); t.value=v||''; if(!chk()) msg.textContent=v?'재무봇 링크가 아닌 것 같아요. 다시 복사해 주세요.':'복사한 내용이 없어요. 재무봇 메시지의 링크를 길게 눌러 복사해 주세요.'; else open(); }catch(e){ msg.textContent='자동 붙여넣기가 안 돼요. 아래 칸을 길게 눌러 ‘붙여넣기’를 고르세요.'; t.focus(); } };
+  const open=()=>{ const c=chk(); if(!c){ if(!t.value.trim()) msg.textContent='먼저 링크를 붙여넣어 주세요.'; return; } o.remove(); LS.setItem(IMPK,c); impCheck(); };
+  o.querySelector('#pp-ok').onclick=open; o.querySelector('#pp-x').onclick=()=>o.remove(); o.onclick=e=>{ if(e.target===o) o.remove(); }; }
 const b64u=s=>{ s=s.replace(/-/g,'+').replace(/_/g,'/'); s+='='.repeat((4-s.length%4)%4); return Uint8Array.from(atob(s),c=>c.charCodeAt(0)); };
 const ub64=a=>btoa(String.fromCharCode(...a));
 /* --- 기억된 열쇠 (이 기기 IndexedDB · 꺼낼 수 없는 키) --- */
@@ -2674,14 +2716,17 @@ function snapName(raw){ raw=String(raw||'').trim(); if(!raw||/^무명\s*\d*$/.te
   return {pid:null,name:raw,lvl:'low',from:raw,cands:bd<=P.length?best.map(m=>m.name):[]}; }
 /* --- 확인 화면 상태 --- */
 let IM=null;
-async function impCheck(){ const code=LS.getItem(IMPK); if(!code) return;
+async function impCheck(){ const code=LS.getItem(IMPK); if(!code) return; if(IMP_OUT){ outNotice(); return; }
   if(PUB && !D.configured){ return; }   // 교회 자료를 먼저 불러온 뒤 (새로고침 후 다시)
   passSheet.wrong=false; const ask=async()=>{ const v=await passSheet(); passSheet.wrong=false; return v; };
   const askW=async()=>{ if(askW.n++) passSheet.wrong=true; return ask(); }; askW.n=0;
   let d; try{ d=await impOpen(code,askW); }catch(e){ if(e.message==='cancel'){ toastU('나중에 다시 열 수 있어요 (홈의 📥 알림)'); renderHome&&CUR==='home'&&RENDER.home(); return; } LS.removeItem(IMPK); alert(e.message==='old'?'이 휴대폰 브라우저가 너무 오래돼서 열 수 없어요. 브라우저를 업데이트해 주세요.':'입력 자료 링크가 잘못됐어요. 챗봇에게 다시 받아 주세요.'); return; }
-  if(!d||d.app!=='hanmaum-imp'||!/^(off|exp)$/.test(d.kind)){ LS.removeItem(IMPK); alert('입력 자료가 아니에요'); return; }
+  if(!d||d.app!=='hanmaum-imp'||!/^(off|exp|both)$/.test(d.kind)){ LS.removeItem(IMPK); alert('입력 자료가 아니에요'); return; }
   const wk=weekOf(d.date); if(!wk||!OPEN_MONTHS.includes(wk.m)){ LS.removeItem(IMPK); alert(`${d.date}은(는) 입력할 수 없는 날짜예요 (마감된 달).`); return; }
-  IM={d,wk:{m:wk.m,w:wk.w,sun:wk.sun},kind:d.kind,rows:(d.rows||[]).map((r,i)=>impRow(d.kind,r,i))};
+  const W={m:wk.m,w:wk.w,sun:wk.sun}, mk=p=>({d:p,wk:W,kind:p.kind,rows:(p.rows||[]).map((r,i)=>impRow(p.kind,r,i))});
+  if(d.kind==='both'){ const ps=(d.parts||[]).filter(p=>p&&/^(off|exp)$/.test(p.kind)&&p.date===d.date); if(!ps.length){ LS.removeItem(IMPK); alert('입력 자료가 아니에요'); return; }
+    const B={d,parts:ps.map(mk)}; B.parts.forEach(p=>p.multi=B); IM=B.parts[0]; }
+  else IM=mk(d);
   go('imp'); }
 function impRow(kind,r,i){ const conf=r.c==null?1:+r.c;
   if(kind==='off'){ const s=snapName(r.n); return {i,pid:s.pid,name:s.name,from:s.from,cands:s.cands||[],key:r.k,amt:+r.a||0,memo:r.m||'',lvl:s.lvl==='low'?'low':(s.lvl==='mid'||conf<0.8)?'mid':'hi',alow:conf<0.8}; }
@@ -2701,7 +2746,9 @@ function renderImp(){ const el=$('#v-imp'); if(!IM){ el.innerHTML=`<div class="r
   const card=k=>{ const ls=rows.filter(r=>r.key===k); const sub=r2(ls.reduce((s,r)=>s+r.amt,0)); const f=((d.form||{}).sec||{})[k];
     return `<section class="rp-card"><div class="rp-ch2"><span class="rp-ti">${imIcon(k)}</span><h2>${h(imLabel(k))}</h2><span class="rp-cnt">${ls.length}건</span><b class="rp-sum">${won(sub)}</b></div>${chk(f,sub)}
      <div class="rp-chips">${ls.map(r=>`<button class="rp-chip imchip ${r.lvl==='mid'?'c-mid':r.lvl==='low'?'c-low':''} ${off&&r.pid===ANON?'anon':''}" data-ed="${r.i}">${off?`<span>${h(r.name)}${/십일조/.test(r.memo||'')?' <small>(십일조)</small>':''}</span>`:`<span>${h(r.memo||xLabel(r.key))}</span>`}<b>${won(r.amt)}</b></button>`).join('')}<button class="rp-chip imadd" data-add="${h(k)}">＋ 추가</button></div></section>`; };
-  el.innerHTML=`<div class="imtop"><button class="btn ghost sm" id="im-x">✕ 취소</button><span>📥 사진으로 입력 · 확인</span><span style="width:54px"></span></div>
+  const B=IM.multi, ptot=P=>{ const rs=P.rows.filter(r=>!r.del); return r2(rs.reduce((s,r)=>s+r.amt,0)+((P.d.auto||[]).reduce((s,a)=>s+(+a.a||0),0))); };
+  const tabs=B?`<div class="imtabs">${B.parts.map((P,i)=>`<button data-imt="${i}" class="${P===IM?'on':''}"><span>${P.kind==='off'?'💵 헌금':'🧾 지출'} · ${P.rows.filter(r=>!r.del).length}건</span><b>${won(ptot(P))}</b></button>`).join('')}</div><div class="iminfo sm">헌금과 지출이 함께 왔어요. 위 탭을 눌러 <b>둘 다 확인</b>하고, 맨 아래 저장을 한 번 누르면 <b>둘 다 저장</b>돼요.</div>`:'';
+  el.innerHTML=`<div class="imtop"><button class="btn ghost sm" id="im-x">✕ 취소</button><span>📥 사진으로 입력 · 확인</span><span style="width:54px"></span></div>${tabs}
    <div class="iminfo">챗봇이 사진을 읽어 채웠어요. <b>칩을 눌러 고치고</b>, 맞으면 맨 아래 <b>저장</b>을 누르세요.${need?`<br><span class="lg"><i class="y"></i>확인 필요</span> <span class="lg"><i class="r"></i>명단에 없는 이름</span>`:''}</div>
    <div class="rp-wrap rp-narrow"><article class="rp${off?' pastor':''}">
     <header class="rp-head"><div class="rp-ch">${h(CH())} 재정부</div><div class="rp-tt"><span class="rp-ic">${off?'💵':'🧾'}</span><div><h1>${off?'헌금 입력 확인':'지출 입력 확인'}</h1><div class="rp-sub">${dLabel(su)} 주일 · ${IM.wk.m}월 ${WEEKN[IM.wk.w-1]} · ${off?'항목별헌금자명단':'지출결의서'} 사진</div></div></div><span class="rp-badge in">저장 전</span></header>
@@ -2714,7 +2761,8 @@ function renderImp(){ const el=$('#v-imp'); if(!IM){ el.innerHTML=`<div class="r
     <section class="rp-grand${off?'':' r'}"><span>${off?'헌금 합계':'지출 합계'}</span><b>${won(tot+auto)}</b></section>
     ${off?'<div class="iminfo sm">은행 이자는 양식에 없어서 따로 입력해요.</div>':''}
    </article></div>
-   <div class="imsave"><button class="btn big" id="im-save">${need?`✔ 저장 (확인 필요 ${need}건)`:'✔ 저장'} · ${rows.length}건</button></div>`;
+   <div class="imsave"><button class="btn big" id="im-save">${B?`✔ 헌금·지출 모두 저장 · ${B.parts.reduce((s,P)=>s+P.rows.filter(r=>!r.del&&r.amt>0).length,0)}건`:`${need?`✔ 저장 (확인 필요 ${need}건)`:'✔ 저장'} · ${rows.length}건`}</button></div>`;
+  el.querySelectorAll('[data-imt]').forEach(b=>b.onclick=()=>{ IM=B.parts[+b.dataset.imt]; renderImp(); scrollTo(0,0); });
   $('#im-x').onclick=()=>{ if(confirm('가져온 내용을 버릴까요? (링크로 다시 열 수 있어요)')){ LS.removeItem(IMPK); IM=null; go('home'); } };
   el.querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>chipEdit(IM.rows.find(r=>r.i===+b.dataset.ed)));
   el.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{ const r=off?{i:IM.rows.length,pid:null,name:'',key:b.dataset.add,amt:0,lvl:'low',neu:true}:{i:IM.rows.length,key:b.dataset.add,amt:0,memo:'',lvl:'mid',neu:true}; chipEdit(r); });
@@ -2744,19 +2792,29 @@ function chipEdit(r){ const off=IM.kind==='off'; const o=document.createElement(
   if(o.querySelector('#ce-del')) o.querySelector('#ce-del').onclick=()=>{ r.del=true; close(); renderImp(); toastU('지웠어요',()=>{ delete r.del; renderImp(); }); };
   if(o.querySelector('#ce-x')) o.querySelector('#ce-x').onclick=close;
   o.onclick=e=>{ if(e.target===o) close(); }; }
-async function impSave(){ const off=IM.kind==='off', d=IM.d, rows=IM.rows.filter(r=>!r.del&&r.amt>0); if(!rows.length){ toast('저장할 내용이 없어요'); return; }
-  const imps=S.settings.imports||(S.settings.imports={});
-  if(imps[d.id] && !confirm('이 입력 자료는 이미 저장한 적이 있어요. 또 더하면 두 번 기록돼요. 그래도 저장할까요?')) return;
-  const ex=S.entries.filter(e=>e.kind===(off?'income':'expense')&&+e.month===IM.wk.m&&+e.week===IM.wk.w&&!isInt(e.key)).length;
-  if(ex && !confirm(`이 주일에 이미 ${off?'헌금':'지출'} 기록이 ${ex}건 있어요.\n기존 기록은 그대로 두고 ${rows.length}건을 더할까요?`)) return;
-  const unk=off? [...new Set(rows.filter(r=>!r.pid).map(r=>r.name))] : [];
+/* 저장: 이미 같은 기록(같은 주·계정·금액·사람/메모)이 있으면 빼고 새 것만 더함 → 두 번 열거나 일부만 저장했어도 중복 없음 */
+function impPlan(P){ const off=P.kind==='off', rows=P.rows.filter(r=>!r.del&&r.amt>0);
+  const ex=S.entries.filter(e=>e.kind===(off?'income':'expense')&&+e.month===P.wk.m&&+e.week===P.wk.w&&!isInt(e.key));
+  const sig=(k,a,x)=>k+'|'+r2(+a).toFixed(2)+'|'+x, pool={};
+  ex.forEach(e=>{ const g=sig(e.key,e.amount,off?e.pid:String(e.memo||'').trim()); pool[g]=(pool[g]||0)+1; });
+  const neu=[], dup=[]; rows.forEach(r=>{ const g=off?(r.pid?sig(r.key,r.amt,r.pid):null):sig(r.key,r.amt,String(r.memo||'').trim()); if(g&&pool[g]>0){ pool[g]--; dup.push(r); } else neu.push(r); });
+  return {P,off,rows,ex:ex.length,neu,dup}; }
+async function impSave(){ const parts=IM.multi?IM.multi.parts:[IM], top=IM.multi?IM.multi.d:IM.d;
+  if(!parts.some(P=>P.rows.some(r=>!r.del&&r.amt>0))){ toast('저장할 내용이 없어요'); return; }
+  const plans=parts.map(impPlan), lab=p=>p.off?'헌금':'지출';
+  const tot=plans.reduce((s,p)=>s+p.neu.length,0), dups=plans.reduce((s,p)=>s+p.dup.length,0);
+  const done=()=>{ const imps=S.settings.imports||(S.settings.imports={}); const t=new Date().toISOString(); imps[top.id]=t; parts.forEach(P=>imps[P.d.id]=t); save(); LS.removeItem(IMPK); const wk=IM.wk; IM=null; RV={mode:'week',m:wk.m,w:wk.w}; return wk; };
+  if(!tot){ alert(`이미 모두 저장돼 있어요 (${dups}건). 두 번 기록하지 않았어요.`); const wk=done(); toastU(`이미 저장돼 있어요 · ${wk.m}월 ${WEEKN[wk.w-1]}`); go('report'); return; }
+  if(plans.some(p=>p.ex)){ const msg=plans.map(p=>p.ex?`${lab(p)}: 이미 ${p.ex}건 있어요 → ${p.dup.length?`같은 ${p.dup.length}건은 빼고 `:'기존 기록은 그대로 두고 '}새 ${p.neu.length}건만 더해요`:`${lab(p)}: 새 ${p.neu.length}건`).join('\n');
+    if(!confirm(`이 주일에 이미 기록이 있어요.\n${msg}\n\n더할까요?`)) return; }
+  const unk=[...new Set(plans.filter(p=>p.off).flatMap(p=>p.neu.filter(r=>!r.pid).map(r=>r.name)))];
   if(unk.length && !confirm(`명단에 없는 이름 ${unk.length}명:\n${unk.join(', ')}\n\n새 교인으로 추가하고 저장할까요? (아니면 '취소' 후 칩을 눌러 고치세요)`)) return;
   const newId={}; unk.forEach(n=>{ newId[n]=addMember(n,{memo:'사진 입력으로 추가'}).id; });
-  const date=iso(IM.wk.sun), tag='imp-'+d.id; let n=0;
-  rows.forEach(r=>{ if(off){ const pid=r.pid||newId[r.name]; addEntry({kind:'income',date,month:IM.wk.m,week:IM.wk.w,key:r.key,amount:r.amt,pid,gid:tag+'-'+pid,memo:r.memo||'',src:tag}); }
-    else addEntry({kind:'expense',date,month:IM.wk.m,week:IM.wk.w,key:r.key,amount:r.amt,memo:r.memo||'',bigo:r.bigo||'',src:tag}); n++; });
-  imps[d.id]=new Date().toISOString(); save(); LS.removeItem(IMPK);
-  const wk=IM.wk; IM=null; toastU(`${n}건 저장했어요 · ${wk.m}월 ${WEEKN[wk.w-1]}`); RV={mode:'week',m:wk.m,w:wk.w}; go('report'); }
+  const cnt={};
+  plans.forEach(p=>{ const P=p.P, date=iso(P.wk.sun), tag='imp-'+P.d.id; cnt[lab(p)]=p.neu.length;
+    p.neu.forEach(r=>{ if(p.off){ const pid=r.pid||newId[r.name]; addEntry({kind:'income',date,month:P.wk.m,week:P.wk.w,key:r.key,amount:r.amt,pid,gid:tag+'-'+pid,memo:r.memo||'',src:tag}); }
+      else addEntry({kind:'expense',date,month:P.wk.m,week:P.wk.w,key:r.key,amount:r.amt,memo:r.memo||'',bigo:r.bigo||'',src:tag}); }); });
+  const wk=done(); toastU(`${Object.entries(cnt).map(([k,v])=>`${k} ${v}건`).join(' · ')} 저장했어요${dups?` (중복 ${dups}건 뺌)`:''} · ${wk.m}월 ${WEEKN[wk.w-1]}`); go('report'); }
 /* --- 스캔 후 챗봇에게 보내기 --- */
 async function sendToBot(blobs,kind){ const wk=SC.week?weekOf(SC.week):null; const nm=i=>`${SC.week||"사진"}_${kind==='list'?'헌금자명단':'지출내역서'}${blobs.length>1?'_'+(i+1):''}.jpg`;
   const files=blobs.map((b,i)=>new File([b],nm(i),{type:'image/jpeg'}));
@@ -2772,8 +2830,11 @@ async function sendToBot(blobs,kind){ const wk=SC.week?weekOf(SC.week):null; con
 (function(){ const sec=document.createElement('section'); sec.className='view'; sec.id='v-imp'; $('#v-home').after(sec); RENDER.imp=()=>renderImp(); SUBOF.imp='home';
   const rh=RENDER.home; RENDER.home=()=>{ rh(); const ba=document.querySelector('#v-home .bigacts'); if(!ba) return;
     if(!$('#h-pin')){ const b=document.createElement('button'); b.className='bigact pin'; b.id='h-pin'; b.innerHTML='<span class="i">📝</span><span><span class="t">사진으로 입력</span><br><span class="d">헌금자명단 · 지출내역서 → 챗봇이 읽어 줘요</span></span>'; b.onclick=()=>{ SC.week=null; SC.focus='in'; go('scan'); }; ba.appendChild(b); }
+    if(!$('#h-link')){ const b=document.createElement('button'); b.className='bigact link'; b.id='h-link'; b.innerHTML='<span class="i">🔗</span><span><span class="t">재무봇 링크 넣기</span><br><span class="d">재무봇이 보낸 링크를 복사해서 여기에 붙여넣기</span></span>'; b.onclick=pasteSheet; ba.appendChild(b); }
+    if(IMP_OUT) outNotice();
     if(LS.getItem(IMPK) && !$('#h-imp')){ const n=document.createElement('button'); n.id='h-imp'; n.className='imnote'; n.innerHTML='📥 챗봇이 보낸 입력 자료가 있어요 · <b>열기</b>'; n.onclick=impCheck; ba.before(n); } }; })();
-Object.assign(window.HM,{impCheck,impOpen,snapName,rememberImpKey,_imState:()=>IM,sendToBot});
+Object.assign(window.HM,{impCodeOf,pasteSheet,isApp,impCheck,impOpen,snapName,rememberImpKey,_imState:()=>IM,sendToBot});
+if(IMP_OUT) setTimeout(outNotice,200);
 
 /* ---------- 시작 ---------- */
 $('#brandName').textContent=CH()+' 재정부'; document.title=CH()+' 헌금계수'; if($('#lock-title')) $('#lock-title').textContent=CH()+' 재정부';
