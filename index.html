@@ -1166,6 +1166,11 @@ function parseAmounts(str){ const out=[]; for(let p of String(str).split(/[\s,;+
 /* ---------- store ---------- */
 const ANON='anon';
 const LKEY = SKEY+'-lock';
+/* 고정 규칙: 목사님 본인 십일조는 항상 퇴직적립금(적립금 통장)으로 — 가정(부부) 이름은 제외. 이름·계정은 교회 자료(D.accounts)에서 읽음 (공개 코드에 이름 없음) */
+const TITHE_K='일반헌금|십일조';
+function pastorResv(){ const k=RESV_IN(); const a=k&&(D.accounts||[]).find(x=>x.key===k); const nm=a&&String(a.sub||'').replace(/\s*목사(님)?$/,'').trim(); return nm? {k,nm} : null; }
+function pastorTitheFix(s){ let n=0; if(!s||!Array.isArray(s.entries)) return 0; const R=pastorResv(); if(!R) return 0; const ids=new Set((s.members||[]).filter(m=>String(m.name||'').trim()===R.nm).map(m=>m.id));
+  s.entries.forEach(e=>{ if(e.kind==='income' && e.key===TITHE_K && ids.has(e.pid)){ e.key=R.k; n++; } }); return n; }
 let S = load();
 function load(){
   let s=null; try{ s=JSON.parse(LS.getItem(SKEY)); }catch(e){}
@@ -1184,10 +1189,11 @@ function load(){
     changed=true; }
   if(!s.version || s.version<2){ s.version=2; changed=true; }          // v1 → v2: 이름 없는 헌금은 모두 무명
   s.entries.forEach(e=>{ if(e.kind==='income' && !e.pid){ e.pid=ANON; changed=true; } });
+  if(pastorTitheFix(s)) changed=true;
   if(changed||s._seeded){ try{ LS.setItem(SKEY, JSON.stringify(s)); }catch(e){} }
   return s;
 }
-function save(){ try{ LS.setItem(SKEY, JSON.stringify(S)); }catch(e){ toast('저장 공간이 부족하거나 막혀 있어요. 백업을 저장하세요'); } }
+function save(){ pastorTitheFix(S); try{ LS.setItem(SKEY, JSON.stringify(S)); }catch(e){ toast('저장 공간이 부족하거나 막혀 있어요. 백업을 저장하세요'); } }
 function addEntry(o){ const e=Object.assign({id:uid(), ts:new Date().toISOString(), memo:'', bigo:''}, o); if(e.kind==='income' && !e.pid) e.pid=ANON; e.amount=r2(e.amount); S.entries.push(e); save(); return e; }
 function delEntry(id){ S.entries=S.entries.filter(e=>e.id!==id); save(); }
 
