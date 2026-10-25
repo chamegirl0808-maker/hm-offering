@@ -1193,6 +1193,9 @@ function load(){
   if(changed||s._seeded){ try{ LS.setItem(SKEY, JSON.stringify(s)); }catch(e){} }
   return s;
 }
+/* 무명 묶음: 한 줄로 저장된 무명 헌금의 건수 (e.cnt 또는 메모 '무명 5명/5건') — 금액은 그대로 */
+function gCnt(e){ if(!e||e.pid!==ANON) return 1; const n=+e.cnt || +(((e.memo||'').match(/무명\s*(\d+)\s*(명|건)/)||[])[1]); return n>1? Math.floor(n) : 1; }
+const cntOf=list=>list.reduce((s,e)=>s+gCnt(e),0);
 function save(){ pastorTitheFix(S); try{ LS.setItem(SKEY, JSON.stringify(S)); }catch(e){ toast('저장 공간이 부족하거나 막혀 있어요. 백업을 저장하세요'); } }
 function addEntry(o){ const e=Object.assign({id:uid(), ts:new Date().toISOString(), memo:'', bigo:''}, o); if(e.kind==='income' && !e.pid) e.pid=ANON; e.amount=r2(e.amount); S.entries.push(e); save(); return e; }
 function delEntry(id){ S.entries=S.entries.filter(e=>e.id!==id); save(); }
@@ -1966,7 +1969,7 @@ function cwStep3(wk){
   const rows=[]; for(const sec of INC_SECS){ const ls=ACC.filter(a=>a.section===sec&&v[a.key][wk.w-1]); if(!ls.length) continue; rows.push(`<tr class="sec"><td colspan="2">${h(SEC_SHORT[sec])}</td></tr>`);
     ls.forEach(a=>{ const n=incomeOfWeek(wk).filter(e=>e.key===a.key).length; rows.push(`<tr><td>${tIcon(a.key)} ${h(tLabel(a.key))} <span class="c">${n}건</span></td><td class="r">${won(v[a.key][wk.w-1])}</td></tr>`); }); }
   return `<div class="card"><h3>${kdate(wk.sun)} 주일 헌금 합계</h3><table class="ctable">${rows.join('')}<tr class="g"><td>총 헌금</td><td class="r" id="cw-total">${won(T.inc)}</td></tr></table>
-    <div class="hint" style="margin-top:8px">${peopleOfWeek(wk)}명이 이름으로 · 무명 ${incomeOfWeek(wk).filter(e=>e.pid===ANON&&!isInt(e.key)).length}건 · 모두 ${incomeOfWeek(wk).length}건</div></div>
+    <div class="hint" style="margin-top:8px">${peopleOfWeek(wk)}명이 이름으로 · 무명 ${cntOf(incomeOfWeek(wk).filter(e=>e.pid===ANON&&!isInt(e.key)))}건 · 모두 ${cntOf(incomeOfWeek(wk))}건</div></div>
    <div class="card cash" style="margin-top:14px"><h3>💰 실제로 세어 본 돈과 맞춰 보기</h3><div class="field" style="margin:0"><label>세어 본 현금 합계</label><input id="cw-cash" inputmode="decimal" autocomplete="off" placeholder="예: 17820" value="${c.cash!=null?c.cash:''}"></div><div id="cw-cashres"></div></div>
    <div class="wizbar"><button class="btn ghost big" id="cw-prev">‹ 입력으로</button><button class="btn big green" id="cw-finish">✓ 계수 마치기</button></div>`;
 }
@@ -2248,16 +2251,16 @@ function rpGive(wk,pastor){
   const all=incomeOfWeek(wk); const es=all.filter(e=>!isInt(e.key)), ints=all.filter(e=>isInt(e.key));   // 은행 이자는 헌금자 목록과 따로
   const tot=r2(es.reduce((s,e)=>s+ +e.amount,0)), itot=r2(ints.reduce((s,e)=>s+ +e.amount,0));
   const keys=incomeKeys().filter(k=>es.some(e=>e.key===k));
-  const named=new Set(es.filter(e=>e.pid&&e.pid!==ANON).map(e=>e.pid)); const anonN=es.filter(e=>e.pid===ANON).length;
+  const named=new Set(es.filter(e=>e.pid&&e.pid!==ANON).map(e=>e.pid)); const anonN=cntOf(es.filter(e=>e.pid===ANON));
   const cards=keys.map(k=>{ const ls=es.filter(e=>e.key===k); const sub=r2(ls.reduce((s,e)=>s+ +e.amount,0));
     const per={}, ord=[]; ls.filter(e=>e.pid!==ANON).forEach(e=>{ const tag=(isMirror(k)&&/\((.+)\)/.test(e.memo||''))?e.memo.match(/\((.+)\)/)[1]:''; const id=e.pid+'|'+tag; if(!per[id]){ per[id]={pid:e.pid,tag,a:0}; ord.push(id); } per[id].a+=+e.amount; });
     const an=ls.filter(e=>e.pid===ANON); const tags=[...new Set(ord.map(i=>per[i].tag))];
     const chips=list=>list.map(i=>`<span class="rp-chip"><span>${h(mem(per[i].pid).name)}</span><b>${won(per[i].a)}</b></span>`).join('');
     const body= tags.length>1 ? tags.map(t=>`<div class="rp-subh">${h(t||'기타')}</div><div class="rp-chips">${chips(ord.filter(i=>per[i].tag===t))}</div>`).join('') : `<div class="rp-chips">${chips(ord)}</div>`;
-    return `<section class="rp-card"><div class="rp-ch2"><span class="rp-ti">${tIcon(k)}</span><h2>${h(tLabel(k))}</h2><span class="rp-cnt">${ls.length}건</span><b class="rp-sum">${won(sub)}</b></div>${body}${an.length?`<div class="rp-chips"><span class="rp-chip anon"><span>무명 ${an.length}건</span><b>${won(an.reduce((s,e)=>s+ +e.amount,0))}</b></span></div>`:''}</section>`; }).join('');
+    return `<section class="rp-card"><div class="rp-ch2"><span class="rp-ti">${tIcon(k)}</span><h2>${h(tLabel(k))}</h2><span class="rp-cnt">${cntOf(ls)}건</span><b class="rp-sum">${won(sub)}</b></div>${body}${an.length?`<div class="rp-chips"><span class="rp-chip anon"><span>무명 ${cntOf(an)}건</span><b>${won(an.reduce((s,e)=>s+ +e.amount,0))}</b></span></div>`:''}</section>`; }).join('');
   const head= pastor? rpHead('🙏',`${h(CH())} 주간 헌금 보고`,wkSub(wk),['out','목사님 보고용'],true) : rpHead('💵','주간 헌금 계수 현황',wkSub(wk),['in','교회 내부용']);
   return `<article class="rp${pastor?' pastor':''}">${head}
-   <section class="rp-hero g"><div class="rp-hl">총 헌금</div><div class="rp-hv">${won(tot)}</div><div class="rp-hs">헌금하신 분 <b>${named.size}명(가정)</b>${anonN?` · 무명 <b>${anonN}건</b>`:''} · 모두 ${es.length}건</div></section>
+   <section class="rp-hero g"><div class="rp-hl">총 헌금</div><div class="rp-hv">${won(tot)}</div><div class="rp-hs">헌금하신 분 <b>${named.size}명(가정)</b>${anonN?` · 무명 <b>${anonN}건</b>`:''} · 모두 ${cntOf(es)}건</div></section>
    ${cards||'<div class="rp-empty big">이 주일에 입력된 헌금이 없어요</div>'}
    <section class="rp-grand"><span>${pastor?'헌금 합계':'헌금 합계'}</span><b>${won(tot)}</b></section>
    ${itot?`<section class="rp-int"><div class="rp-int-h"><span>🏦 은행 이자 <small>(헌금 아님 · 통장별)</small></span><b>${won(itot)}</b></div><div class="rp-int-g">${[['일반헌금|이자','일반재정'],['선교목적헌금|이자','선교헌금'],['건축헌금|이자','건축헌금'],['적립금입금|이자','적립금']].map(([k,l])=>{ const v=r2(ints.filter(e=>e.key===k).reduce((s,e)=>s+ +e.amount,0)); return v?`<span>${l} <b>${won(v)}</b></span>`:''; }).join('')}</div><div class="rp-int-t"><span>이번 주 수입 합계 (헌금 + 이자)</span><b>${won(r2(tot+itot))}</b></div></section>`:''}${pastor?`<div class="rp-by">재정부 ${h(S.settings.fin?'재무 '+S.settings.fin:'')} 드림</div>`:''}${rpFoot()}</article>`; }
