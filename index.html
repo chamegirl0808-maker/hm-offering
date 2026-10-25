@@ -1318,7 +1318,8 @@ function weekCalc(m,w){
   const sec=s=>ACC.filter(a=>a.section===s).reduce((t,a)=>t+g(a.key),0);
   const mis=sec('선교비')+ACC.filter(a=>isMirror(a.key)).reduce((t,a)=>t+g(a.key),0);
   // 엑셀 10주계산과 같이 '다섯째주' 칸에서만 월말 선교분배금(지출분배금×3%)을 일반재정 → 선교로 옮김 (총액 변화 없음)
-  let dist3=0; if(w===5){ dist3=isHist(m)? histDist(m) : r2(totalsFrom(monthTotals(m)).dist*0.03); }   // 지난 달: 엑셀에 기록된 선교분배금 그대로
+  // 주일이 4번인 달은 마지막(4번째) 주일에 반영 — 그 주 통장 입금액에 포함 (엑셀은 다섯째주 칸에 두지만 월말 잔액은 같음)
+  const nSun=sundays(m).length; let dist3=0; if(w===5 || (nSun<5 && w===nSun)){ dist3=isHist(m)? histDist(m) : r2(totalsFrom(monthTotals(m)).dist*0.03); }   // 지난 달: 엑셀에 기록된 선교분배금 그대로
   const dep={resv:sec('적립금입금')-sec('적립금지출'), bld:sec('건축헌금')-sec('건축지출'), mis:sec('선교목적헌금')-mis+dist3, gen:sec('일반헌금')-T.gen-dist3};
   dep.total=dep.resv+dep.bld+dep.mis+dep.gen;
   // 통장별 입금/출금 (엑셀 통장내역의 '입금' 행 = 들어온 것 − 나간 것, 그 두 부분을 따로)
@@ -1371,7 +1372,7 @@ function incomeFormHTML(m,w){
    <div class="fsub">주간통장입금내역</div>
    <table class="ft bk"><tr><th>통장입금</th><th>적립금</th><th>건축/차량헌금</th><th>목적선교헌금</th><th>일반재정</th><th>총 액</th></tr>
     <tr><th>금 액</th><td class="r">${fnum0(D.resv)}</td><td class="r">${fnum0(D.bld)}</td><td class="r">${fnum0(D.mis)}</td><td class="r">${fnum0(D.gen)}</td><td class="r"><b>${fnum0(D.total)}</b></td></tr></table>
-   ${W.dist3?`<div class="fnote">※ 다섯째주 칸: 엑셀과 같이 월말 선교분배금 ${fnum(W.dist3)}(지출분배금×3%)을 일반재정 → 목적선교로 옮겨 계산했습니다 (총액 변동 없음).</div>`:''}
+   ${W.dist3?`<div class="fnote">※ ${w===5?'다섯째주 칸':'이달 마지막 주일'}: 월말 선교분배금 ${fnum(W.dist3)}(지출분배금×3%)을 일반재정 → 목적선교로 옮겨 계산했습니다 (총액 변동 없음).</div>`:''}
    <div class="fsay">위와 같이 보고 드립니다.</div>${formSign(['회 계','재 무','재정부장','담임목사'])}<div class="ffoot">${h(CHP())}</div></div>`;
 }
 
@@ -2336,8 +2337,7 @@ function acctBal(m,w,withMonthEnd){ const hist=isHist(m), RR=hist?(x=>x):r2; let
   if(hist){ const o=(D.opening||{}).acct_start_fy||{}; b={resv:+o.resv||0,bld:+o.bld||0,mis:+o.mis||0,gen:+o.gen||0}; }
   for(const mm of (hist? MONTHS.filter(isHist) : [10,11])){ const n=sundays(mm).length;
     for(let i=1;i<=n;i++){ if(mm===m && i>w) break; const c=weekCalc(mm,i); ['resv','bld','mis','gen'].forEach(k=>b[k]=RR(b[k]+c.dep[k])); }
-    const done = mm<m || (mm===m && withMonthEnd);
-    if(done && n<5){ const d=monthEndDist(mm); b.mis=RR(b.mis+d); b.gen=RR(b.gen-d); }   // 다섯째주 칸 선교분배금(3%) — 주일이 4번인 달은 월말에 반영
+    // 선교분배금(3%)은 weekCalc 가 마지막 주일(5주 또는 4주뿐인 달의 4주)에 c.dep 로 넣음 → 여기서 따로 더하지 않음 (이중 계산 방지)
     if(mm===m) break; }
   if(hist) ['resv','bld','mis','gen'].forEach(k=>b[k]=r2(b[k])); b.total=r2(b.resv+b.bld+b.mis+b.gen); return b; }
 function balCardHTML(b,asof,note,cls){ return `<section class="${cls||'rp-card'} bal3"><div class="bal-h"><span class="bal-t">🏦 통장 잔액 <small>4개 통장</small></span><span class="bal-d">${asof}</span></div>
