@@ -2845,12 +2845,63 @@ async function sendToBot(blobs,kind){ const wk=SC.week?weekOf(SC.week):null; con
 Object.assign(window.HM,{impCodeOf,pasteSheet,isApp,impCheck,impOpen,snapName,rememberImpKey,_imState:()=>IM,sendToBot});
 if(IMP_OUT) setTimeout(outNotice,200);
 
+/* ===================== 🔄 자동 받기: 재무봇이 올린 암호화 주간 기록(updates.enc) → 자동 저장 =====================
+   - 파일 = AES-GCM 암호문. 열쇠 = 이 기기에 기억된 입력 열쇠(교회 자료 비밀번호 + 입력 salt, IndexedDB · 꺼낼 수 없는 키).
+   - 파일 안에는 salt도 이름도 금액도 평문으로 없음. 기존 링크 저장(impPlan)과 같은 중복 검사 → 몇 번 받아도 한 번만 들어감.
+   - 고침(fixes)·지움(dels)은 각각 id로 한 번만 적용. */
+const SYNC_URL='updates.enc', SYNC_MODE=(window.HM_SYNC_MODE||'auto');   // 'auto' = 열면 바로 저장 · 'tap' = '새 기록 받기' 한 번 누르기
+let SYNC_PENDING=null;
+async function syncKey(askPass){ const k=await kGet(); if(k&&k.key) return k.key;
+  if(!D.impSalt||!askPass) return null;   // 열쇠가 없는 기기: 비밀번호 한 번 (그 뒤로는 기억)
+  const p=await askPass(); if(p==null) return null; const K=await impDerive(p,b64u(D.impSalt)); await kPut({salt:D.impSalt,key:K}); return K; }
+async function syncFetch(){ const r=await fetch(SYNC_URL+'?t='+Date.now(),{cache:'no-store'}); if(!r.ok) return null; return r.json(); }
+async function syncOpen(f,K){ const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64u(f.iv)},K,b64u(f.ct));
+  const b=new Uint8Array(await new Response(new Blob([new Uint8Array(pt)]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+  const d=JSON.parse(new TextDecoder().decode(b)); if(!d||d.app!=='hanmaum-sync') throw new Error('bad'); return d; }
+const syncDone=()=>S.settings.syncDone||(S.settings.syncDone={});
+const pidByName=n=>{ if(!n||n==='무명') return ANON; const s=snapName(n); return s.lvl==='hi'?s.pid:null; };
+function syncMatch(o){ const wk=weekOf(o.date); if(!wk) return null; const kind=o.kind==='exp'?'expense':'income';
+  return S.entries.find(e=>e.kind===kind&&+e.month===wk.m&&+e.week===wk.w&&e.key===o.key&&Math.abs(+e.amount-o.a)<0.005&&(kind==='income'?e.pid===pidByName(o.n):String(e.memo||'').trim()===String(o.m||'').trim())); }
+/* 할 일 계산 (저장 안 함) */
+function syncPlan(d){ const imps=S.settings.imports||{}, dn=syncDone(), out={items:[],fixes:[],dels:[],add:0,dup:0,dates:new Set(),unk:new Set()};
+  (d.items||[]).forEach(it=>{ if(imps[it.id]) return; const wk=weekOf(it.date); if(!wk||!OPEN_MONTHS.includes(wk.m)) return;
+    const W={m:wk.m,w:wk.w,sun:wk.sun}; const parts=(it.kind==='both'?it.parts:[it]).filter(p=>/^(off|exp)$/.test(p.kind));
+    const plans=parts.map(p=>impPlan({d:p,wk:W,kind:p.kind,rows:(p.rows||[]).map((r,i)=>impRow(p.kind,r,i))}));
+    plans.forEach(pl=>{ out.add+=pl.neu.length; out.dup+=pl.dup.length; if(pl.off) pl.neu.filter(r=>!r.pid).forEach(r=>out.unk.add(r.name)); });
+    if(plans.some(pl=>pl.neu.length)) out.dates.add(it.date); out.items.push({it,plans}); });
+  (d.fixes||[]).forEach(f=>{ if(dn['f:'+f.id]) return; const e=syncMatch(f.from); out.fixes.push({f,e}); if(e) out.dates.add(f.from.date); });
+  (d.dels||[]).forEach(x=>{ if(dn['d:'+x.id]) return; const e=syncMatch(x); out.dels.push({x,e}); if(e) out.dates.add(x.date); });
+  out.n=out.add+out.fixes.filter(z=>z.e).length+out.dels.filter(z=>z.e).length; return out; }
+function syncApply(pl){ const t=new Date().toISOString(), imps=S.settings.imports||(S.settings.imports={}), dn=syncDone(), newId={};
+  pl.unk.forEach(n=>{ newId[n]=addMember(n,{memo:'자동 받기로 추가'}).id; });
+  pl.items.forEach(({it,plans})=>{ plans.forEach(p=>{ const P=p.P, date=iso(P.wk.sun), tag='imp-'+P.d.id;
+      p.neu.forEach(r=>{ if(p.off){ const pid=r.pid||newId[r.name]; S.entries.push({id:uid(),ts:t,memo:'',bigo:'',kind:'income',date,month:P.wk.m,week:P.wk.w,key:r.key,amount:r2(r.amt),pid,gid:tag+'-'+pid,...(r.memo?{memo:r.memo}:{}),src:tag}); }
+        else S.entries.push({id:uid(),ts:t,kind:'expense',date,month:P.wk.m,week:P.wk.w,key:r.key,amount:r2(r.amt),memo:r.memo||'',bigo:r.bigo||'',src:tag}); });
+      imps[P.d.id]=t; }); imps[it.id]=t; });
+  pl.fixes.forEach(({f,e})=>{ if(e) Object.assign(e,f.to.key?{key:f.to.key}:{},f.to.a!=null?{amount:r2(f.to.a)}:{},f.to.m!=null?{memo:f.to.m}:{}); dn['f:'+f.id]=t; });
+  pl.dels.forEach(({x,e})=>{ if(e) S.entries=S.entries.filter(y=>y!==e); dn['d:'+x.id]=t; });
+  S.settings.syncSeq=Math.max(+S.settings.syncSeq||0,+SYNC_PENDING?.seq||0); save(); }
+const mdOf=s=>{ const [,m,d]=s.split('-').map(Number); return m+'/'+d; };
+function syncNote(pl){ const ds=[...pl.dates].sort().map(mdOf); return (ds.length?ds.join(', ')+' 기록이 들어왔어요':'새 기록이 들어왔어요')+(pl.dup?` (이미 있던 ${pl.dup}건은 그대로)`:''); }
+function syncBanner(pl){ if($('#h-sync')) $('#h-sync').remove(); const ba=document.querySelector('#v-home .bigacts'); if(!ba) return; const n=document.createElement('button'); n.id='h-sync'; n.className='imnote';
+  n.innerHTML=`📥 ${[...pl.dates].sort().map(mdOf).join(', ')||'새'} 기록이 왔어요 · <b>새 기록 받기</b>`; n.onclick=()=>{ syncApply(pl); n.remove(); SYNC_PENDING=null; toastU('✅ '+syncNote(pl)); if(CUR==='home') RENDER.home(); }; ba.before(n); }
+async function syncCheck(opt){ opt=opt||{}; if(DEMO||(PUB&&!D.configured)||!crypto.subtle||!window.DecompressionStream) return {skip:1};
+  let f; try{ f=await syncFetch(); }catch(e){ return {skip:'net'}; } if(!f) return {skip:'none'};
+  if(+f.seq && +f.seq<=(+S.settings.syncSeq||0) && !opt.force) return {skip:'seen'};   // 이미 받은 판 (seq는 암호 밖 숫자 · 내용 없음)
+  const K=await syncKey(opt.askPass); if(!K) return {skip:'nokey'};
+  let d; try{ d=await syncOpen(f,K); }catch(e){ return {skip:'key'}; }
+  SYNC_PENDING=d; const pl=syncPlan(d); if(!pl.n){ S.settings.syncSeq=Math.max(+S.settings.syncSeq||0,+d.seq||0); save(); return {n:0,dup:pl.dup}; }
+  if(SYNC_MODE==='auto'&&!opt.tap){ syncApply(pl); toastU('✅ '+syncNote(pl)); if(CUR==='home') RENDER.home(); return {n:pl.n,applied:1,note:syncNote(pl)}; }
+  syncBanner(pl); return {n:pl.n,banner:1}; }
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&unlocked) syncCheck(); });
+Object.assign(window.HM,{syncCheck,syncPlan,_S:()=>S,bankBalance});
+
 /* ---------- 시작 ---------- */
 $('#brandName').textContent=CH()+' 재정부'; document.title=CH()+' 헌금계수'; if($('#lock-title')) $('#lock-title').textContent=CH()+' 재정부';
 window.addEventListener('afterprint',()=>document.body.classList.remove('p-weekly','p-monthly','p-stmt','p-forms','p-pretty'));
 window.addEventListener('hashchange',()=>{ const t=(location.hash.match(/#(\w+)/)||[])[1]; if(t && t!==CUR && RENDER[t==='sum'?'report':t]) go(t); });
 if(PUB && 'serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(()=>{});
-function startApp(){ renderTabs(); refreshLockBtn(); const t=(location.hash.match(/#(\w+)/)||[])[1]; go(t==='imp'?'home':(t||'home')); if(LS.getItem(IMPK)) setTimeout(impCheck,300); else maybeOnboard(); }
+function startApp(){ renderTabs(); refreshLockBtn(); const t=(location.hash.match(/#(\w+)/)||[])[1]; go(t==='imp'?'home':(t||'home')); if(LS.getItem(IMPK)) setTimeout(impCheck,300); else maybeOnboard(); setTimeout(()=>syncCheck(),600); }
 if(PUB && !D.configured && !DEMO) showSetup();
 else if(getLock()) showLock(startApp); else { unlocked=true; startApp(); }
 
