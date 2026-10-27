@@ -2709,7 +2709,7 @@ async function impOpen(code,askPass){ const p=code.split('.'); if(p.length!==4||
   let bytes=new Uint8Array(pt);
   if(ver==='2'){ if(!window.DecompressionStream) throw new Error('old'); bytes=new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer()); }
   return JSON.parse(new TextDecoder().decode(bytes)); }
-function passSheet(){ return new Promise(res=>{ const f=()=>{ const o=document.createElement('div'); o.className='imsheet-bg'; o.innerHTML=`<div class="imsheet"><h3>🔑 교회 자료 비밀번호</h3><p>챗봇이 보낸 입력 자료를 열어요. 이 휴대폰에서 한 번만 넣으면 다음부터는 묻지 않아요.</p>
+function passSheet(msg){ return new Promise(res=>{ const f=()=>{ const o=document.createElement('div'); o.className='imsheet-bg'; o.innerHTML=`<div class="imsheet"><h3>🔑 교회 자료 비밀번호</h3><p>${msg||'챗봇이 보낸 입력 자료를 열어요. 이 휴대폰에서 한 번만 넣으면 다음부터는 묻지 않아요.'}</p>
    <input id="ip-pass" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="비밀번호"><div id="ip-msg" class="ip-msg">${passSheet.wrong?'비밀번호가 맞지 않아요. 다시 넣어 주세요 🙏':''}</div>
    <div class="imbtns"><button class="btn soft" id="ip-x">취소</button><button class="btn" id="ip-ok">열기</button></div></div>`; document.body.appendChild(o);
    const ok=()=>{ const v=o.querySelector('#ip-pass').value; if(!v.trim()) return; o.querySelector('#ip-msg').textContent='여는 중… (몇 초 걸려요)'; setTimeout(()=>{ o.remove(); res(v); },30); };
@@ -2851,9 +2851,21 @@ if(IMP_OUT) setTimeout(outNotice,200);
    - 고침(fixes)·지움(dels)은 각각 id로 한 번만 적용. */
 const SYNC_URL='updates.enc', SYNC_MODE=(window.HM_SYNC_MODE||'auto');   // 'auto' = 열면 바로 저장 · 'tap' = '새 기록 받기' 한 번 누르기
 let SYNC_PENDING=null;
-async function syncKey(askPass){ const k=await kGet(); if(k&&k.key) return k.key;
-  if(!D.impSalt||!askPass) return null;   // 열쇠가 없는 기기: 비밀번호 한 번 (그 뒤로는 기억)
-  const p=await askPass(); if(p==null) return null; const K=await impDerive(p,b64u(D.impSalt)); await kPut({salt:D.impSalt,key:K}); return K; }
+let SYNC_ASKED=false;   // 이번에 앱을 연 동안 비밀번호를 이미 물어봤는지 (취소하면 다시 묻지 않음)
+const SYNC_MSG='새 헌금 기록을 받으려면 <b>교회 자료 비밀번호</b>를 한 번만 넣어 주세요. 다음부터는 저절로 들어와요.';
+function syncAsk(){ passSheet.wrong=false; const a=async()=>{ const v=await passSheet(SYNC_MSG); passSheet.wrong=false; return v; }; const w=async()=>{ if(w.wrong) passSheet.wrong=true; w.wrong=false; return a(); }; return w; }
+/* 열쇠: 기억된 것 → 없으면 (askPass가 있을 때만) 비밀번호로 만들고 updates.enc로 맞는지 확인한 뒤에만 기억 */
+async function syncKey(askPass,f){ const k=await kGet(); if(k&&k.key) return k.key;
+  if(!askPass) return null;
+  for(;;){ const p=await askPass(); if(p==null) return null;
+    let salt=D.impSalt;
+    if(!salt){   // 예전에 불러온 교회 자료에 입력 salt가 없음 → 암호화된 교회 자료(data.enc)에서 꺼내 이 기기에 보관
+      let d; try{ d=await decryptBundle(p); }catch(e){ if(e.message==='pass'){ askPass.wrong=true; continue; } toastU('인터넷에 연결된 상태에서 다시 열어 주세요'); return null; }
+      salt=d&&d.impSalt; if(!salt) return null;
+      try{ const c=JSON.parse(LS.getItem(CKEY)); if(c&&Array.isArray(c.accounts)){ c.impSalt=salt; LS.setItem(CKEY,JSON.stringify(c)); } }catch(e){} D.impSalt=salt; }
+    const K=await impDerive(p,b64u(salt));
+    try{ await syncOpen(f,K); }catch(e){ askPass.wrong=true; continue; }
+    await kPut({salt,key:K}); return K; } }
 async function syncFetch(){ const r=await fetch(SYNC_URL+'?t='+Date.now(),{cache:'no-store'}); if(!r.ok) return null; return r.json(); }
 async function syncOpen(f,K){ const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64u(f.iv)},K,b64u(f.ct));
   const b=new Uint8Array(await new Response(new Blob([new Uint8Array(pt)]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
@@ -2888,7 +2900,8 @@ function syncBanner(pl){ if($('#h-sync')) $('#h-sync').remove(); const ba=docume
 async function syncCheck(opt){ opt=opt||{}; if(DEMO||(PUB&&!D.configured)||!crypto.subtle||!window.DecompressionStream) return {skip:1};
   let f; try{ f=await syncFetch(); }catch(e){ return {skip:'net'}; } if(!f) return {skip:'none'};
   if(+f.seq && +f.seq<=(+S.settings.syncSeq||0) && !opt.force) return {skip:'seen'};   // 이미 받은 판 (seq는 암호 밖 숫자 · 내용 없음)
-  const K=await syncKey(opt.askPass); if(!K) return {skip:'nokey'};
+  let ask=opt.askPass; if(!ask&&opt.ask&&!SYNC_ASKED&&!LS.getItem(IMPK)){ const k=await kGet(); if(!(k&&k.key)){ SYNC_ASKED=true; ask=syncAsk(); } }
+  const K=await syncKey(ask,f); if(!K){ if(ask&&!opt.askPass) toastU('나중에 앱을 다시 열면 받을 수 있어요'); return {skip:'nokey'}; }
   let d; try{ d=await syncOpen(f,K); }catch(e){ return {skip:'key'}; }
   SYNC_PENDING=d; const pl=syncPlan(d); if(!pl.n){ S.settings.syncSeq=Math.max(+S.settings.syncSeq||0,+d.seq||0); save(); return {n:0,dup:pl.dup}; }
   if(SYNC_MODE==='auto'&&!opt.tap){ syncApply(pl); toastU('✅ '+syncNote(pl)); if(CUR==='home') RENDER.home(); return {n:pl.n,applied:1,note:syncNote(pl)}; }
@@ -2901,7 +2914,7 @@ $('#brandName').textContent=CH()+' 재정부'; document.title=CH()+' 헌금계�
 window.addEventListener('afterprint',()=>document.body.classList.remove('p-weekly','p-monthly','p-stmt','p-forms','p-pretty'));
 window.addEventListener('hashchange',()=>{ const t=(location.hash.match(/#(\w+)/)||[])[1]; if(t && t!==CUR && RENDER[t==='sum'?'report':t]) go(t); });
 if(PUB && 'serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(()=>{});
-function startApp(){ renderTabs(); refreshLockBtn(); const t=(location.hash.match(/#(\w+)/)||[])[1]; go(t==='imp'?'home':(t||'home')); if(LS.getItem(IMPK)) setTimeout(impCheck,300); else maybeOnboard(); setTimeout(()=>syncCheck(),600); }
+function startApp(){ renderTabs(); refreshLockBtn(); const t=(location.hash.match(/#(\w+)/)||[])[1]; go(t==='imp'?'home':(t||'home')); if(LS.getItem(IMPK)) setTimeout(impCheck,300); else maybeOnboard(); setTimeout(()=>syncCheck({ask:1}),600); }
 if(PUB && !D.configured && !DEMO) showSetup();
 else if(getLock()) showLock(startApp); else { unlocked=true; startApp(); }
 
