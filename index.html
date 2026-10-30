@@ -2303,13 +2303,16 @@ function rpMonth(m,upto){ const su=sundays(m); const W=Math.min(su.length, upto|
   const prev=bankBalance(m,0), cur=bankBalance(m,W); const yt=ytd(m); const TY=totalsFrom(yt);
   const full=W===su.length; const sub=`${FY[m]}년 ${m}월 · ${full?'월 전체':`${kdate(su[0])} ~ ${kdate(su[W-1])} 주일 (${W}주)`}`;
   return `<article class="rp rp-month">${rpHead('🗓️',`${m}월 재정 보고`,sub,['out','보고·공유용'])}
-   ${rpSumHero(T.inc,T.exp,prev,cur,['월 수입','월 지출','월 잔액','전월이월'])}
-   ${monthBalCard(m,W)}
    <section class="rp-card"><h2>📅 주별 현황</h2><div class="rp-wt"><div class="hd"><span>주일</span><span>수입</span><span>지출</span><span>잔액</span></div>${rows.map(([d,t])=>`<div><span>${kdate(d)}</span><span class="gi">${won(t.inc)}</span><span class="ge">${won(t.exp)}</span><span class="${t.inc-t.exp<0?'ge':'gi'}">${sgn(r2(t.inc-t.exp))}</span></div>`).join('')}<div class="ft"><span>합계</span><span class="gi">${won(T.inc)}</span><span class="ge">${won(T.exp)}</span><span class="${T.inc-T.exp<0?'ge':'gi'}">${sgn(r2(T.inc-T.exp))}</span></div></div></section>
    <section class="rp-card"><h2>💵 수입 <span class="rp-r">${won(T.inc)}</span></h2>${rpBars(incGroups(obj),'#2b7a55',T.inc)}</section>
-   <section class="rp-card"><h2>📈 회계연도 누계 <small>(${FY[12]}년 12월 ~ ${m}월)</small></h2><div class="rp-k3 sm"><div class="i"><span>수입</span><b>${won(TY.inc)}</b></div><div class="e"><span>지출</span><b>${won(TY.exp)}</b></div><div class="${TY.inc-TY.exp<0?'n':'p'}"><span>차액</span><b>${sgn(r2(TY.inc-TY.exp))}</b></div></div>${full?'':`<div class="rp-note">※ ${m}월은 ${W}주까지의 금액이에요.</div>`}</section>
    <section class="rp-card"><h2>🧾 지출 <span class="rp-r">${won(T.exp)}</span></h2>${rpBars(expGroups(obj),'#c4572f',T.exp)}</section>
+   ${rpSumHero(T.inc,T.exp,prev,cur,['월 수입','월 지출','월 잔액','전월이월'])}
+   <div class="rp-depbal" style="grid-column:1/-1;break-inside:avoid;page-break-inside:avoid;display:flex;flex-direction:column;gap:0">
    ${depTiles(dep,'통장 입금 ('+m+'월 합계)')}
+   <div class="rp-dep2bal" style="text-align:center;color:#6b7280;font-size:13px;line-height:1.2;padding:6px 0">▼ 이번 달 통장 입금이 반영된 통장 잔액</div>
+   ${monthBalCard(m,W)}
+   </div>
+   <section class="rp-card"><h2>📈 회계연도 누계 <small>(${FY[12]}년 12월 ~ ${m}월)</small></h2><div class="rp-k3 sm"><div class="i"><span>수입</span><b>${won(TY.inc)}</b></div><div class="e"><span>지출</span><b>${won(TY.exp)}</b></div><div class="${TY.inc-TY.exp<0?'n':'p'}"><span>차액</span><b>${sgn(r2(TY.inc-TY.exp))}</b></div></div>${full?'':`<div class="rp-note">※ ${m}월은 ${W}주까지의 금액이에요.</div>`}</section>
    ${rpSign()}${rpFoot()}</article>`; }
 let RP_HIST=false;
 function prettyHTML(kind,m,w){ if(kind==='year'){ RP_HIST=false; return rpYear(); } RP_HIST=isHist(m); if(RP_HIST&&(kind==='give'||kind==='pastor')) kind='week';   /* 지난 달: 교인별(이름) 보고서는 없음 */ const wk={m,w,sun:sundays(m)[w-1]}; return kind==='year'?rpYear():kind==='pastor'?rpGive(wk,true):kind==='give'?rpGive(wk):kind==='spend'?rpSpend(wk):kind==='week'?rpWeek(wk):rpMonth(m,w); }
