@@ -2095,12 +2095,15 @@ function renderReport(){ if(!RV.m){ const wk=curWeek(); RV.m=wk.m; RV.w=wk.w; }
    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><div class="segb"><button data-rm="week" class="${week?'on':''}" ${hasW?'':'disabled'}>주간</button><button data-rm="month" class="${!week?'on':''}">월간</button></div></div>
    <div class="scroller" id="r-months">${MONTHS.map(x=>`<button data-m="${x}" class="${x===m?'on':''}">${x}월<small>${OPEN_MONTHS.includes(x)?FY[x]:isHist(x)?'엑셀':'마감'}</small></button>`).join('')}</div>
    ${week?`<div class="scroller" id="r-weeks">${su.map((d,i)=>`<button data-w="${i+1}" class="${i+1===w?'on':''}">${kdate(d)}<small>${WEEKN[i]}${S.counts[m+'-'+(i+1)]&&S.counts[m+'-'+(i+1)].done?' ✓':''}</small></button>`).join('')}</div>`:''}
+   ${week?'':`${hasW?`<div class="card" style="margin-bottom:14px"><h3>${m}월 주별 헌금 · 지출</h3>${barChart(su.map(md),su.map((_,i)=>totalsFrom(v,x=>x[i]).inc),su.map((_,i)=>totalsFrom(v,x=>x[i]).exp),-1,`${m}월 주별 헌금과 지출`)}</div>`:''}
+   <div class="grid2v" style="margin-bottom:14px"><div class="card"><h3>수입 · 헌금 종류별</h3>${hbars(incGroups(obj),'#2b7a55')}</div><div class="card"><h3>지출 · 어디에 썼나요</h3>${hbars(expGroups(obj),'#c4572f')}</div></div>
+   <h3 style="margin:4px 0 8px">${m}월 수지</h3>`}
    <div class="statcards">${kpis}</div>
    ${hist?`<div class="info" style="margin:0 0 12px">📗 ${FY[m]}년 ${m}월은 <b>엑셀 기록</b>(마감된 장부)이에요. 보기만 할 수 있고 고칠 수 없어요. 교인별 헌금은 없어요.</div>`:(!hasW&&PUB&&m!==10&&m!==11?histOfferHTML():'')}
    ${week? flowCardHTML(m,w,'card') : (hasW? monthBalCard(m,lastWeekOf(m)||1,'card') : '')}
    ${week&&c&&c.cash!=null?`<div class="status ${Math.abs(c.cash-T.inc)<0.005?'ok':'warn'}">${Math.abs(c.cash-T.inc)<0.005?'✅ 세어 본 현금과 기록이 맞아요':'⚠️ 세어 본 현금과 '+won(Math.abs(c.cash-T.inc))+' 차이가 있어요'}</div>`:''}
    <div class="card" style="margin-bottom:14px">${chart}</div>
-   <div class="grid2v"><div class="card"><h3>헌금 종류별</h3>${hbars(incGroups(obj),'#2b7a55')}</div><div class="card"><h3>어디에 썼나요</h3>${hbars(expGroups(obj),'#c4572f')}</div></div>
+   ${week?`<div class="grid2v"><div class="card"><h3>헌금 종류별</h3>${hbars(incGroups(obj),'#2b7a55')}</div><div class="card"><h3>어디에 썼나요</h3>${hbars(expGroups(obj),'#c4572f')}</div></div>`:''}
    <div class="card" style="margin-top:14px"><h3>📑 보고서 보기 · 인쇄 · 공유</h3><div class="hint" style="margin:-6px 0 12px">눌러서 미리 보고, ‘인쇄 · PDF’를 누르면 저장할 수 있어요.</div><div class="prlist">
     ${hist?`<button class="pr" data-rp="week"><span class="i">📊</span><span><b>주간 재정 보고</b><small>${kdate(su[w-1])} · 엑셀 기록 (이름 없음)</small></span></button>
     <button class="pr" data-rp="spend"><span class="i">🧾</span><span><b>주간 지출 내역</b><small>${kdate(su[w-1])} · 계정별 (엑셀 기록)</small></span></button>`:''}
