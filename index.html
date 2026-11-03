@@ -941,6 +941,54 @@ button.rp-chip{font-family:inherit;color:inherit;cursor:pointer;-webkit-tap-high
 .imout ol{text-align:left;font-size:16px;line-height:1.7;margin:6px 0 12px;padding-left:24px;color:#3b2c21}
 .imout-here{border:0;background:none;color:#8a786b;text-decoration:underline;font-size:14px;font-family:inherit;padding:6px}
 
+/* 연말정산 · 가정별 헌금 */
+.ye-per{margin:0 0 10px}
+.ye-wrap{max-width:900px}
+.ye-sheet,.ye-doc{background:#fff;border-radius:20px;padding:16px;box-shadow:0 1px 2px rgba(90,50,20,.06),0 4px 14px rgba(90,50,20,.06)}
+.ye-ch{color:#c4572f;font-weight:800;font-size:15px}
+.ye-sheet h2,.ye-doc h2{margin:2px 0 2px;font-size:22px;font-weight:900}
+.ye-sheet h2 small{font-size:15px;color:#6b5a4e}
+.ye-sub{color:#7a7468;font-size:14px;margin-bottom:10px}
+.ye-scroll{overflow-x:auto}
+.ye-t{width:100%;border-collapse:collapse;font-size:16px;font-variant-numeric:tabular-nums}
+.ye-t th{background:#fbe9dc;color:#5a3a26;font-size:14px;padding:8px 6px;text-align:right;white-space:nowrap}
+.ye-t th.l,.ye-t td.l{text-align:left}
+.ye-t td{padding:9px 6px;border-bottom:1px solid #f0e2d4;text-align:right;white-space:nowrap}
+.ye-t tbody tr[data-ye]{cursor:pointer}
+.ye-t tbody tr[data-ye]:active,.ye-t tbody tr[data-ye]:hover{background:#fff4ea}
+.ye-t td.tot{font-weight:800;color:#2b2a27}
+.ye-t .ye-go{color:#c4572f;margin-left:6px;font-weight:900}
+.ye-t tr.sep td{background:#fff7ef;color:#c4572f;font-weight:800;font-size:14px;text-align:left;padding:6px}
+.ye-t tr.vis td{color:#7a7468}
+.ye-t tfoot td{border-top:2px solid #c4572f;font-weight:900;background:#fff7ef;padding:10px 6px}
+.ye-unk{color:#b5564b}
+.ye-doc{max-width:560px;padding:22px 24px;border:1px solid #f0e2d4}
+.ye-doc{text-align:left}
+.ye-doc h2{text-align:center;font-size:24px;letter-spacing:2px}
+.ye-doc .ye-ch,.ye-doc .ye-sub{text-align:center}
+.ye-info,.ye-list{width:100%;border-collapse:collapse;font-size:17px;margin:8px 0}
+.ye-info th{width:70px;text-align:left;color:#6b5a4e;padding:6px 4px;vertical-align:top;font-weight:700}
+.ye-info td{padding:6px 4px}
+.ye-mem{color:#7a7468;font-size:14px}
+.ye-list th{background:#fbe9dc;padding:7px 8px;text-align:left;font-size:15px}
+.ye-list td{padding:8px;border-bottom:1px solid #f0e2d4}
+.ye-list .n{text-align:right;font-variant-numeric:tabular-nums}
+.ye-list tfoot td{border-top:2px solid #c4572f;font-weight:900;font-size:19px;background:#fff7ef}
+.ye-note{font-size:15px;margin:12px 0 6px}
+.ye-date{text-align:right;font-size:15px}
+.ye-sign{text-align:right;font-size:18px;font-weight:800;margin-top:14px}
+.ye-sign i{font-style:normal;font-weight:400;color:#7a7468;margin-left:14px}
+#print-ye{display:none}
+@media print{
+  body.p-ye #print-ye{display:block}
+  #print-ye .ye-sheet,#print-ye .ye-doc{box-shadow:none;border:0;border-radius:0;padding:0;max-width:none}
+  #print-ye .ye-doc{max-width:150mm;margin:0 auto;padding:4mm 0}
+  #print-ye .ye-t{font-size:9.5pt}#print-ye .ye-t th{font-size:9pt;padding:1.5mm 1.2mm}#print-ye .ye-t td{padding:1.4mm 1.2mm}
+  #print-ye .ye-go{display:none}
+  #print-ye .ye-info,#print-ye .ye-list{font-size:11pt}
+  #print-ye *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+
 @page{size:A4;margin:14mm 13mm}
 @page form{size:A4;margin:9mm 11mm 8mm}
 @media print{
@@ -2974,6 +3022,72 @@ async function syncCheck(opt){ opt=opt||{}; if(DEMO||(PUB&&!D.configured)||!cryp
   syncBanner(pl); return {n:pl.n,banner:1}; }
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&unlocked) syncCheck(); });
 Object.assign(window.HM,{syncCheck,syncPlan,_S:()=>S,bankBalance});
+
+/* ===================== 🧾 연말정산: 가정별 헌금 합계 + 기부금 내역서 =====================
+   - 금액은 이 기기에 저장된 교인별 헌금 기록(S.entries)으로 바로 계산 → 매주 자동 받기 후 저절로 늘어남.
+   - 가정 명단(이름)은 암호 파일 households.enc (updates.enc 와 같은 열쇠) · 개인용 파일은 내장 자료 사용.
+   - 무명·이자·적립금(퇴직적립/후생복지) 제외, 방문자는 내역서 없음. */
+const YE_PER={fy:['회계연도',`${FY[12]}-12-01`,`${FY[11]}-11-30`,`${FY[12]}년 12월 1일 ~ ${FY[11]}년 11월 30일`],
+  cal:[`${FY[11]}년 1~12월`,`${FY[11]}-01-01`,`${FY[11]}-12-31`,`${FY[11]}년 1월 1일 ~ ${FY[11]}년 12월 31일`]};
+let YE={per:'fy',sel:null,hh:null,err:null};
+async function yeLoad(){ if(YE.hh) return YE.hh; if(D.households){ YE.hh=D.households; return YE.hh; }
+  if(DEMO) throw new Error('demo');
+  let f=null; try{ const r=await fetch('households.enc?t='+Date.now(),{cache:'no-store'}); if(r.ok) f=await r.json(); }catch(e){}
+  if(!f){ try{ const r=await caches.match('households.enc'); if(r) f=await r.json(); }catch(e){} }
+  if(!f) throw new Error('net');
+  const K=await syncKey(syncAsk(),f); if(!K) throw new Error('nokey');
+  const d=await syncOpen(f,K); if(!d.hh) throw new Error('bad'); YE.hh=d.hh; return YE.hh; }
+function yeCalc(per){ const H=YE.hh, [,s,e]=YE_PER[per]; const idU={}, nmU={}, vI=new Set(H.vis.ids), vN=new Set(H.vis.nm);
+  const U=H.units.map((u,i)=>({...u,i,by:{},tot:0,n:0})); U.forEach(u=>{ u.ids.forEach(x=>idU[x]=u); u.nm.forEach(x=>{ if(!nmU[x]) nmU[x]=u; }); });
+  const extra={}, vis={tot:0,n:0}; let all={tot:0,n:0,by:{}};
+  S.entries.forEach(x=>{ if(x.kind!=='income'||!x.pid||x.pid===ANON) return; const t=H.km[x.key]; if(!t) return; const d=String(x.date||'').slice(0,10); if(d<s||d>e) return;
+    const a=+x.amount||0, nm=mem(x.pid).name; all.tot+=a; all.n++; all.by[t]=(all.by[t]||0)+a;
+    if(vI.has(x.pid)||vN.has(nm)){ vis.tot+=a; vis.n++; return; }
+    let u=idU[x.pid]||nmU[nm]; if(!u){ u=extra[x.pid]||(extra[x.pid]={t:nm,mem:[nm],ids:[x.pid],nm:[nm],h:0,i:9999,by:{},tot:0,n:0,unk:1}); }
+    u.by[t]=(u.by[t]||0)+a; u.tot+=a; u.n++; });
+  const rows=[...U.filter(u=>u.n),...Object.values(extra).sort((a,b)=>a.t.localeCompare(b.t,'ko'))];
+  const types=H.order.filter(t=>all.by[t]);
+  const r=v=>Math.round(v*100)/100; [all,vis,...rows].forEach(o=>o.tot=r(o.tot));
+  return {rows,types,all,vis,hh:rows.filter(u=>u.h),sg:rows.filter(u=>!u.h)}; }
+const yeW=v=>v?fnum(v):'';
+function yeTable(C,per){ const T=C.types;
+  return `<article class="ye-sheet"><div class="ye-h"><div class="ye-ch">${h(CH())}</div><h2>가정별 헌금 합계 <small>(연말정산)</small></h2><div class="ye-sub">${YE_PER[per][3]} · 단위 ₱ · 무명·이자·적립금 제외</div></div>
+  <div class="ye-scroll"><table class="ye-t"><thead><tr><th class="l">가정 / 개인</th>${T.map(t=>`<th>${h(t.replace('헌금',''))}</th>`).join('')}<th>합계</th></tr></thead><tbody>
+  ${C.rows.map((u,i)=>`${i===C.hh.length&&C.hh.length?'<tr class="sep"><td colspan="'+(T.length+2)+'">개인</td></tr>':''}<tr data-ye="${i}"><td class="l"><b>${h(u.t)}</b>${u.unk?' <small class="ye-unk">명단에 없음</small>':''}<span class="ye-go">›</span></td>${T.map(t=>`<td>${yeW(u.by[t])}</td>`).join('')}<td class="tot">${fnum(u.tot)}</td></tr>`).join('')}
+  ${C.vis.n?`<tr class="vis"><td class="l">방문자 <small>(내역서 없음)</small></td><td colspan="${T.length}"></td><td class="tot">${fnum(C.vis.tot)}</td></tr>`:''}
+  </tbody><tfoot><tr><td class="l">전체 <small>(가정 ${C.hh.length} · 개인 ${C.sg.length}${C.vis.n?' · 방문자':''})</small></td>${T.map(t=>`<td>${yeW(C.all.by[t])}</td>`).join('')}<td class="tot">${fnum(C.all.tot)}</td></tr></tfoot></table></div></article>`; }
+function yeStmt(u,per){ const t=new Date(); const T=YE.hh.order.filter(k=>u.by[k]);
+  return `<article class="ye-doc"><div class="ye-ch">${h(CH())}</div><h2>기부금(헌금) 내역서</h2><div class="ye-sub">연말정산 참고용 · 단위 ₱</div>
+  <table class="ye-info"><tr><th>성명</th><td><b>${h(u.t)}</b>${u.h?`<div class="ye-mem">${h(u.mem.join(', '))}</div>`:''}</td></tr><tr><th>기간</th><td>${YE_PER[per][3]}</td></tr></table>
+  <table class="ye-list"><thead><tr><th>헌금 항목</th><th class="n">금액(₱)</th></tr></thead><tbody>${T.map(k=>`<tr><td>${h(k)}</td><td class="n">${fnum(u.by[k])}</td></tr>`).join('')}</tbody>
+  <tfoot><tr><td>합계</td><td class="n">${fnum(u.tot)}</td></tr></tfoot></table>
+  <p class="ye-note">위 금액은 ${h(CH())}에 헌금하신 내역과 같음을 확인합니다.</p>
+  <div class="ye-date">발행일 ${t.getFullYear()}년 ${t.getMonth()+1}월 ${t.getDate()}일</div>
+  <div class="ye-sign"><span>${h(YE.hh.pastor||'담임목사 김팔옥')}</span><i>(서명)</i></div></article>`; }
+function yePrint(html){ let P=$('#print-ye'); if(!P){ P=document.createElement('div'); P.id='print-ye'; P.className='print'; document.body.appendChild(P); } P.innerHTML=html; document.body.classList.add('p-ye'); if(window.__noPrint) return; setTimeout(()=>window.print(),50); }
+window.addEventListener('afterprint',()=>document.body.classList.remove('p-ye'));
+async function renderYe(){ const el=$('#v-ye'); const back=YE.sel!=null?`<button class="backbtn" id="ye-back">‹ 가정별 합계</button>`:`<button class="backbtn" data-back="report">‹ 보고서</button>`;
+  if(!YE.hh){ el.innerHTML=`${back}<div class="rp-empty big" style="margin-top:24px">가정 명단을 여는 중이에요…</div>`;
+    try{ await yeLoad(); }catch(e){ el.innerHTML=`${back}<div class="rp-empty big" style="margin-top:24px">${e.message==='nokey'?'교회 자료 비밀번호를 넣어야 볼 수 있어요.':e.message==='demo'?'예시 화면에서는 볼 수 없어요.':'인터넷에 연결한 뒤 다시 열어 주세요.'}</div><button class="btn" id="ye-retry" style="margin:16px auto;display:block">다시 열기</button>`; const b=$('#ye-retry'); if(b) b.onclick=()=>renderYe(); return; } }
+  const per=YE.per, C=yeCalc(per);
+  const seg=`<div class="segb ye-per">${Object.entries(YE_PER).map(([k,v])=>`<button data-yp="${k}" class="${k===per?'on':''}">${v[0]}</button>`).join('')}</div>`;
+  if(YE.sel!=null){ const u=C.rows.find(x=>x.t===YE.sel); if(!u){ YE.sel=null; return renderYe(); }
+    el.innerHTML=`${back}<h2 class="title">기부금 내역서</h2>${seg}<div class="rp-acts"><button class="btn" id="ye-p">🖨 인쇄 · PDF</button><button class="btn green" id="ye-img">🖼 이미지로 보내기</button></div>
+     <div class="info" style="margin:0 0 12px">🔒 이름과 금액이 들어 있어요. 본인(가정)에게만 드리세요.</div><div class="ye-wrap">${yeStmt(u,per)}</div>`;
+    $('#ye-back').onclick=()=>{ YE.sel=null; renderYe(); scrollTo(0,0); };
+    $('#ye-p').onclick=()=>yePrint(yeStmt(u,per));
+    $('#ye-img').onclick=()=>shareImage($('#v-ye article.ye-doc'),`기부금내역서_${u.t.replace(/[\s·\/]+/g,'_')}.png`,'기부금 내역서');
+  } else {
+    el.innerHTML=`${back}<h2 class="title">연말정산 · 가정별 헌금</h2>${seg}<div class="rp-acts"><button class="btn" id="ye-p">🖨 표 인쇄 · PDF</button></div>
+     <div class="hint" style="margin:0 0 10px">👉 가정 이름을 누르면 <b>기부금 내역서</b>가 나와요. 매주 새 기록이 들어오면 금액이 저절로 바뀌어요.</div>
+     <div class="ye-wrap">${yeTable(C,per)}</div><div class="hint" style="margin-top:8px">※ 교인별 헌금 기록은 이 앱에 들어온 기록(${FY[10]}년 10월부터)으로 계산해요. 이름별 기록이 없는 엑셀 마감월은 들어가지 않아요.</div>`;
+    $('#ye-p').onclick=()=>yePrint(yeTable(C,per));
+    document.querySelectorAll('#v-ye [data-ye]').forEach(r=>r.onclick=()=>{ YE.sel=C.rows[+r.dataset.ye].t; renderYe(); scrollTo(0,0); }); }
+  document.querySelectorAll('#v-ye [data-yp]').forEach(b=>b.onclick=()=>{ YE.per=b.dataset.yp; renderYe(); }); }
+(function(){ const sec=document.createElement('section'); sec.className='view'; sec.id='v-ye'; $('#v-rview').after(sec); RENDER.ye=()=>{ renderYe(); }; SUBOF.ye='report';
+  const rr=RENDER.report; RENDER.report=()=>{ rr(); const y=document.querySelector('#v-report [data-rp="year"]'); if(y&&!$('#r-ye')){ const b=document.createElement('button'); b.className='pr'; b.id='r-ye';
+    b.innerHTML='<span class="i">🧾</span><span><b>연말정산 · 가정별 헌금</b><small>가정별 합계 · 기부금 내역서 (가정마다 한 장)</small></span>'; b.onclick=()=>{ YE.sel=null; go('ye'); }; y.after(b); } }; })();
+Object.assign(window.HM,{yeCalc:p=>yeCalc(p||'fy'),yeLoad,_YE:()=>YE});
 
 /* ---------- 시작 ---------- */
 $('#brandName').textContent=CH()+' 재정부'; document.title=CH()+' 헌금계수'; if($('#lock-title')) $('#lock-title').textContent=CH()+' 재정부';
